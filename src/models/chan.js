@@ -136,11 +136,29 @@ Chan.prototype.removeUser = function(user) {
 	this.users.delete(user.nick.toLowerCase());
 };
 
-Chan.prototype.toJSON = function() {
-	var clone = _.clone(this);
-	clone.users = []; // Do not send user list, the client will explicitly request it when needed
-	clone.messages = clone.messages.slice(-1);
-	return clone;
+Chan.prototype.getFilteredClone = function(lastActiveChannel, lastMessage) {
+	// Perform manual cloning of channel object for better control of performance and memory usage
+	return Object.keys(this).reduce((newChannel, prop) => {
+		if (prop === "users") {
+			// Do not send users, client requests updated user list whenever needed
+			newChannel[prop] = [];
+		} else if (prop === "messages") {
+			// If client is reconnecting, only send new message that client has not seen yet
+			if (lastMessage > -1) {
+				newChannel[prop] = this[prop].filter((m) => m.id > lastMessage);
+			} else {
+				newChannel[prop] = this[prop];
+			}
+
+			// If channel is active, send up to 100 last messages, for all others send just 1
+			// Client will automatically load more messages whenever needed based on last seen messages
+			newChannel[prop] = newChannel[prop].slice(this.id === lastActiveChannel ? -100 : -1);
+		} else {
+			newChannel[prop] = this[prop];
+		}
+
+		return newChannel;
+	}, {});
 };
 
 function writeUserLog(client, msg) {
