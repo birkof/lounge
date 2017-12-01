@@ -152,7 +152,7 @@ Chan.prototype.getFilteredClone = function(lastActiveChannel, lastMessage) {
 
 			// If channel is active, send up to 100 last messages, for all others send just 1
 			// Client will automatically load more messages whenever needed based on last seen messages
-			newChannel[prop] = newChannel[prop].slice(this.id === lastActiveChannel ? -100 : -1);
+			newChannel[prop] = newChannel[prop].slice(lastActiveChannel === true || this.id === lastActiveChannel ? -100 : -1);
 		} else {
 			newChannel[prop] = this[prop];
 		}
