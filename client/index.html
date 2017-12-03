@@ -2,31 +2,46 @@
 <html>
 	<head>
 
-	<meta charset="utf-8">
-	<meta name="viewport" content="width=device-width, user-scalable=no">
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no">
 
-	<link rel="preload" as="script" href="js/bundle.vendor.js">
-	<link rel="preload" as="script" href="js/bundle.js">
-	<link rel="stylesheet" href="css/bootstrap.css">
-	<link rel="stylesheet" href="css/style.css">
-	<link id="theme" rel="stylesheet" href="{{ theme }}">
-	<style id="user-specified-css"></style>
+		<meta property="og:title" content="Chat online românesc cu webcam">
+		<meta property="og:type" content="website">
+		<meta property="og:url" content="https://chatromanesc.com">
+		<meta property="og:image" content="https://chatromanesc.com/img/chat_1024x1024.png">
 
-	<title>The Lounge</title>
+		<style type="text/css">*{box-sizing:border-box}body{position:relative;overflow:hidden;color:#222;height:100vh;padding:0;margin:0;background:-webkit-linear-gradient(315deg, #8254EA 0%, #E86DEC 100%);background:linear-gradient(135deg, #8254EA 0%, #E86DEC 100%);-webkit-font-smoothing:antialiased;}.preloader{position:fixed;top:0;right:0;bottom:0;left:0;background-color:#fff;z-index:10000}.preloader:before{position:absolute;content:'';width:2.5em;height:2.5em;border-radius:50%;background:0 0;left:calc(50% - 1.25em);top:calc(50% - 1.25em);border-top:.15em solid #eee;border-right:.15em solid #eee;border-bottom:.15em solid #666;border-left:.15em solid #666;-webkit-animation:loader 1s infinite linear;-moz-animation:loader 1s infinite linear;-ms-animation:loader 1s infinite linear;-o-animation:loader 1s infinite linear;animation:loader 1s infinite linear}@-webkit-keyframes loader{to{-webkit-transform:rotate(360deg)}}@-moz-keyframes loader{to{-moz-transform:rotate(360deg)}}@-ms-keyframes loader{to{-ms-transform:rotate(360deg)}}@-o-keyframes loader{to{-o-transform:rotate(360deg)}}@keyframes loader{to{transform:rotate(360deg)}}</style>
+		<link rel="stylesheet" href="//fonts.googleapis.com/css?family=Ubuntu">
 
-	<link rel="shortcut icon" href="img/favicon.png" data-other="img/favicon-notification.png" data-toggled="false" id="favicon">
-	<link rel="apple-touch-icon" sizes="120x120" href="img/apple-touch-icon-120x120.png">
-	<link rel="mask-icon" href="img/logo.svg" color="#455164">
-	<link rel="manifest" href="manifest.json">
+        <link rel="preload" as="script" href="js/bundle.vendor.js">
+        <link rel="preload" as="script" href="js/bundle.js">
+        <link rel="stylesheet" href="css/bootstrap.css">
+        <link rel="stylesheet" href="css/style.css">
+        <link id="theme" rel="stylesheet" href="{{ theme }}">
+        <style id="user-specified-css"></style>
 
-	<meta name="apple-mobile-web-app-capable" content="yes">
-	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-	<meta name="mobile-web-app-capable" content="yes">
-	<meta name="theme-color" content="#455164">
+		<title>Chat online românesc, Chat cu web, Chat Romania</title>
 
+		<link rel="shortcut icon" href="img/favicon.png" data-other="img/favicon-notification.png" data-toggled="false" id="favicon">
+		<link rel="apple-touch-icon" sizes="120x120" href="img/apple-touch-icon-120x120.png">
+		<link rel="mask-icon" href="img/logo.svg" color="<%- themeColor %>">
+		<link rel="manifest" href="manifest.json">
+
+		<meta name="apple-mobile-web-app-capable" content="yes">
+		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+		<meta name="mobile-web-app-capable" content="yes">
+		<meta name="theme-color" content="<%- themeColor %>">
+
+		<!-- The shortlink for the site. Use google or any other URL shortening service -->
+		<link rel="shortlink" href="https://goo.gl/PZJoHh">
+
+		<!-- Don't want the content to be translated on the fly by the browser ? -->
+		<meta name="google" value="notranslate">
+
+		<meta name="geography" content="EU">
 	</head>
 	<body class="signed-out {{#if public}}public{{/if}}" data-transports="{{tojson transports}}">
-
+	<div class="preloader"></div>
 	<div id="wrap">
 	<div id="viewport">
 		<aside id="sidebar">
@@ -48,10 +63,10 @@
 					<div class="container">
 						<div class="row">
 							<div class="col-xs-12">
-								<h1 class="title">The Lounge is loading…</h1>
+								<h1 class="title">Chat online românesc ...</h1>
 							</div>
 							<div class="col-xs-12">
-								<p id="loading-page-message">Loading the app… <a href="http://enable-javascript.com/" target="_blank" rel="noopener">Make sure to have JavaScript enabled.</a></p>
+								<p id="loading-page-message">Loading the app... <a href="http://enable-javascript.com/" target="_blank" rel="noopener">Make sure to have JavaScript enabled.</a></p>
 								<div id="loading-slow">
 									<p>This is taking longer than it should, there might be connectivity issues.</p>
 									<button id="loading-slow-reload" class="btn">Reload page</button>
@@ -115,15 +130,9 @@
 					<form class="container" method="post" action="">
 						<div class="row">
 							<div class="col-sm-12">
-								<h1 class="title">
-									{{#if public}}The Lounge - {{/if}}
-									Connect
-									{{#unless displayNetwork}}
-										{{#if lockNetwork}}
-										to {{defaults.name}}
-										{{/if}}
-									{{/unless}}
-								</h1>
+                                <h1 class="title">
+                                    Conectează-te la chat online românesc!
+                                </h1>
 							</div>
 							{{#if displayNetwork}}
 							<div>
@@ -180,16 +189,16 @@
 								<input class="input username" id="connect:username" name="username" value="{{defaults.username}}">
 							</div>
 							{{/unless}}
-							<div class="col-sm-3">
+							<div class="col-sm-3 hide">
 								<label for="connect:realname">Real name</label>
 							</div>
-							<div class="col-sm-9">
+							<div class="col-sm-9 hide">
 								<input class="input" id="connect:realname" name="realname" value="{{defaults.realname}}">
 							</div>
-							<div class="col-sm-3">
+							<div class="col-sm-3 hide">
 								<label for="connect:channels">Channels</label>
 							</div>
-							<div class="col-sm-9">
+							<div class="col-sm-9 hide">
 								<input class="input" id="connect:channels" name="join" value="{{defaults.join}}">
 							</div>
 							<div class="col-sm-9 col-sm-offset-3">
@@ -860,22 +869,6 @@
 								</p>
 							</div>
 						</div>
-
-						<h2>About The Lounge</h2>
-
-						<p class="about">
-							{{#if gitCommit}}
-								The Lounge is running from source
-								(<a href="https://github.com/thelounge/lounge/tree/{{ gitCommit }}" target="_blank" rel="noopener"><code>{{ gitCommit }}</code></a>).<br>
-							{{else}}
-								The Lounge is in version <strong>{{version}}</strong>
-								(<a href="https://github.com/thelounge/lounge/releases/tag/v{{ version }}" target="_blank" rel="noopener">See release notes</a>).<br>
-							{{/if}}
-
-							<a href="https://thelounge.github.io/" target="_blank" rel="noopener">Website</a><br>
-							<a href="https://thelounge.github.io/docs/" target="_blank" rel="noopener">Documentation</a><br>
-							<a href="https://github.com/thelounge/lounge/issues/new" target="_blank" rel="noopener">Report a bug</a>
-						</p>
 					</div>
 				</div>
 			</div>
