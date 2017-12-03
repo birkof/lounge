@@ -217,7 +217,7 @@ function index(req, res, next) {
 		"default-src *",
 		"connect-src 'self' ws: wss:",
 		"style-src * 'unsafe-inline'",
-		"script-src 'self' google-analytics.com",
+		"script-src 'self' google-analytics.com googletagmanager.com",
 		"child-src 'self'",
 		"object-src 'none'",
 		"form-action 'none'",
