@@ -4,15 +4,7 @@
 <form class="container" method="post" action="" data-event="conn">
 	<div class="row">
 		<div class="col-sm-12">
-			<h1 class="title">
-				{{#if public}}The Lounge - {{/if}}
-				Connect
-				{{#unless displayNetwork}}
-					{{#if lockNetwork}}
-					to {{defaults.name}}
-					{{/if}}
-				{{/unless}}
-			</h1>
+			<h1 class="title">Conectează-te la chat online românesc!</h1>
 		</div>
 		{{#if displayNetwork}}
 		<div>
@@ -75,16 +67,16 @@
 		<div class="col-sm-9">
 			<input class="input" id="connect:password" type="password" name="password" value="{{defaults.password}}">
 		</div>
-		<div class="col-sm-3">
+		<div class="col-sm-3 hide">
 			<label for="connect:realname">Real name</label>
 		</div>
-		<div class="col-sm-9">
+		<div class="col-sm-9 hide">
 			<input class="input" id="connect:realname" name="realname" value="{{defaults.realname}}">
 		</div>
-		<div class="col-sm-3">
+		<div class="col-sm-3 hide">
 			<label for="connect:channels">Channels</label>
 		</div>
-		<div class="col-sm-9">
+		<div class="col-sm-9 hide">
 			<input class="input" id="connect:channels" name="join" value="{{defaults.join}}">
 		</div>
 		<div class="col-sm-9 col-sm-offset-3">

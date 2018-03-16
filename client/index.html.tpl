@@ -59,7 +59,7 @@
 				<div id="loading" class="window active">
 					<div id="loading-status-container">
 						<p>Loading...</p>
-						<p id="loading-page-message"><a href="https://enable-javascript.com/" target="_blank" rel="noopener">Your JavaScript must be enabled.</a></p>
+                     		<p id="loading-page-message"><a href="https://enable-javascript.com/" target="_blank" rel="noopener">Your JavaScript must be enabled.</a></p>
 					</div>
 					<div id="loading-reload-container">
 						<p id="loading-slow">This is taking longer than it should, there might be connectivity issues.</p>
