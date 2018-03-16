@@ -9,7 +9,7 @@ module.exports = function(irc, network) {
 	const client = this;
 
 	network.channels[0].pushMessage(client, new Msg({
-		text: "Network created, connecting to " + network.host + ":" + network.port + "...",
+		text: "Network created, connecting...",
 	}), true);
 
 	irc.on("registered", function() {

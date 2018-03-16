@@ -2,31 +2,42 @@
 <html>
 	<head>
 
-	<meta charset="utf-8">
-	<meta name="viewport" content="width=device-width, user-scalable=no">
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, user-scalable=no">
 
-	<link rel="preload" as="script" href="js/bundle.vendor.js">
-	<link rel="preload" as="script" href="js/bundle.js">
-	<link rel="stylesheet" href="css/bootstrap.css">
-	<link rel="stylesheet" href="css/primer-tooltips.css">
-	<link rel="stylesheet" href="css/style.css">
-	<link id="theme" rel="stylesheet" href="themes/<%- theme %>.css" data-server-theme="<%- theme %>">
-	<% _.forEach(stylesheets, function(css) { %>
-		<link rel="stylesheet" href="packages/<%- css %>">
-	<% }); %>
-	<style id="user-specified-css"></style>
+        <meta property="og:title" content="Chat online românesc cu webcam">
+        <meta property="og:type" content="website">
+        <meta property="og:url" content="https://chatromanesc.com">
+        <meta property="og:image" content="https://chatromanesc.com/img/chat_1024x1024.png">
 
-	<title>The Lounge</title>
+        <link rel="preload" as="script" href="js/bundle.vendor.js">
+        <link rel="preload" as="script" href="js/bundle.js">
+        <link rel="stylesheet" href="css/bootstrap.css">
+        <link rel="stylesheet" href="css/primer-tooltips.css">
+        <link rel="stylesheet" href="css/style.css">
+        <link id="theme" rel="stylesheet" href="themes/<%- theme %>.css" data-server-theme="<%- theme %>">
+        <% _.forEach(stylesheets, function(css) { %>
+            <link rel="stylesheet" href="packages/<%- css %>">
+        <% }); %>
+        <style id="user-specified-css"></style>
 
-	<link rel="shortcut icon" href="img/favicon.png" data-other="img/favicon-notification.png" data-toggled="false" id="favicon">
-	<link rel="apple-touch-icon" sizes="120x120" href="img/apple-touch-icon-120x120.png">
-	<link rel="mask-icon" href="img/logo.svg" color="<%- themeColor %>">
-	<link rel="manifest" href="manifest.json">
+        <title>Chat online românesc, Chat cu web, Chat Romania</title>
 
-	<meta name="apple-mobile-web-app-capable" content="yes">
-	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-	<meta name="mobile-web-app-capable" content="yes">
-	<meta name="theme-color" content="<%- themeColor %>">
+        <link rel="shortcut icon" href="img/favicon.png" data-other="img/favicon-notification.png" data-toggled="false" id="favicon">
+        <link rel="apple-touch-icon" sizes="120x120" href="img/apple-touch-icon-120x120.png">
+        <link rel="mask-icon" href="img/logo.svg" color="<%- themeColor %>">
+        <link rel="manifest" href="manifest.json">
+
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+        <meta name="mobile-web-app-capable" content="yes">
+        <meta name="theme-color" content="<%- themeColor %>">
+
+        <!-- The shortlink for the site. Use google or any other URL shortening service -->
+        <link rel="shortlink" href="https://goo.gl/PZJoHh">
+
+        <!-- Don't want the content to be translated on the fly by the browser ? -->
+        <meta name="google" value="notranslate">
 
 	</head>
 	<body class="signed-out<%- public ? " public" : "" %>" data-transports="<%- JSON.stringify(transports) %>">
@@ -47,8 +58,7 @@
 			<article id="windows">
 				<div id="loading" class="window active">
 					<div id="loading-status-container">
-						<img src="img/logo-vertical-transparent-bg.svg" class="logo" alt="The Lounge" width="256" height="170">
-						<img src="img/logo-vertical-transparent-bg-inverted.svg" class="logo-inverted" alt="The Lounge" width="256" height="170">
+						<p>Loading...</p>
 						<p id="loading-page-message"><a href="https://enable-javascript.com/" target="_blank" rel="noopener">Your JavaScript must be enabled.</a></p>
 					</div>
 					<div id="loading-reload-container">
@@ -64,9 +74,9 @@
 						<div class="input">
 							<span id="nick">
 								<span id="nick-value" spellcheck="false"></span><!-- Comments here remove spaces between elements
-								--><span id="set-nick-tooltip" class="tooltipped tooltipped-e" aria-label="Change nick…"><button id="set-nick" type="button" aria-label="Change nick…"></button></span><!--
-								--><span id="cancel-nick-tooltip" class="tooltipped tooltipped-e" aria-label="Cancel"><button id="cancel-nick" type="button" aria-label="Cancel"></button></span><!--
-								--><span id="save-nick-tooltip" class="tooltipped tooltipped-e" aria-label="Save"><button id="submit-nick" type="button" aria-label="Save"></button></span>
+                            --><span id="set-nick-tooltip" class="tooltipped tooltipped-e" aria-label="Change nick…"><button id="set-nick" type="button" aria-label="Change nick…"></button></span><!--
+                            --><span id="cancel-nick-tooltip" class="tooltipped tooltipped-e" aria-label="Cancel"><button id="cancel-nick" type="button" aria-label="Cancel"></button></span><!--
+                            --><span id="save-nick-tooltip" class="tooltipped tooltipped-e" aria-label="Save"><button id="submit-nick" type="button" aria-label="Save"></button></span>
 							</span>
 							<textarea id="input" class="mousetrap"></textarea>
 							<span id="submit-tooltip" class="tooltipped tooltipped-w tooltipped-no-touch" aria-label="Send message">
@@ -79,7 +89,6 @@
 				<div id="connect" class="window" role="tabpanel" aria-label="Connect"></div>
 				<div id="settings" class="window" role="tabpanel" aria-label="Settings"></div>
 				<div id="help" class="window" role="tabpanel" aria-label="Help"></div>
-				<div id="changelog" class="window" aria-label="Changelog"></div>
 			</article>
 		</div>
 

@@ -7,42 +7,11 @@
 	<h2>
 		<small class="pull-right">
 			v{{version}}
-			(<a href="#" id="view-changelog" data-target="#changelog">release notes</a>)
 		</small>
-		About The Lounge
 	</h2>
 
 	<div class="about">
 		<div id="version-checker"></div>
-
-		{{#if gitCommit}}
-			<p>
-				The Lounge is running from source
-				(<a href="https://github.com/thelounge/thelounge/tree/{{gitCommit}}" target="_blank" rel="noopener">commit <code>{{gitCommit}}</code></a>).
-			</p>
-
-			<ul>
-				<li>
-					Compare
-					<a href="https://github.com/thelounge/thelounge/compare/{{gitCommit}}...master" target="_blank" rel="noopener">between <code>{{gitCommit}}</code> and <code>master</code></a>
-					to see what you are missing
-				</li>
-				<li>
-					Compare
-					<a href="https://github.com/thelounge/thelounge/compare/{{version}}...{{gitCommit}}" target="_blank" rel="noopener">between <code>{{version}}</code> and <code>{{gitCommit}}</code></a>
-					to see your local changes</li>
-			</ul>
-		{{/if}}
-
-		<p>
-			<a href="https://thelounge.chat/" target="_blank" rel="noopener" class="website-link">Website</a>
-		</p>
-		<p>
-			<a href="https://thelounge.chat/docs/" target="_blank" rel="noopener" class="documentation-link">Documentation</a>
-		</p>
-		<p>
-			<a href="https://github.com/thelounge/thelounge/issues/new" target="_blank" rel="noopener" class="report-issue-link">Report an issue…</a>
-		</p>
 	</div>
 
 	<h2>Keyboard Shortcuts</h2>
@@ -364,7 +333,7 @@
 		</div>
 		<div class="description">
 			<p>
-				Send an action message to the current channel. The Lounge will
+				Send an action message to the current channel. Chat will
 				display it inline, as if the message was posted in the third
 				person.
 			</p>

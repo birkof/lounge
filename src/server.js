@@ -245,12 +245,13 @@ function index(req, res, next) {
 		"form-action 'none'", // no default-src fallback
 		"connect-src 'self' ws: wss:", // allow self for polling; websockets
 		"style-src 'self' https: 'unsafe-inline'", // allow inline due to use in irc hex colors
-		"script-src 'self'", // javascript
+		"script-src 'self' google-analytics.com googletagmanager.com\"", // javascript
 		"worker-src 'self'", // service worker
 		"child-src 'self'", // deprecated fall back for workers, Firefox <58, see #1902
 		"manifest-src 'self'", // manifest.json
 		"font-src 'self' https:", // allow loading fonts from secure sites (e.g. google fonts)
 		"media-src 'self' https:", // self for notification sound; allow https media (audio previews)
+		"object-src 'none'",
 	];
 
 	// If prefetch is enabled, but storage is not, we have to allow mixed content
