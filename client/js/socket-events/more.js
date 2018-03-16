@@ -3,6 +3,7 @@
 const $ = require("jquery");
 const socket = require("../socket");
 const render = require("../render");
+const condensed = require("../condensed");
 const chat = $("#chat");
 
 socket.on("more", function(data) {
@@ -23,6 +24,7 @@ socket.on("more", function(data) {
 	// Remove the date-change marker we put at the top, because it may
 	// not actually be a date change now
 	const children = $(chan).children();
+
 	if (children.eq(0).hasClass("date-marker-container")) { // Check top most child
 		children.eq(0).remove();
 	} else if (children.eq(1).hasClass("date-marker-container")) {
@@ -58,6 +60,21 @@ socket.on("more", function(data) {
 		}
 	}
 
+	// Join duplicate condensed messages together
+	const condensedDuplicate = chan.find(".msg.condensed + .msg.condensed");
+
+	if (condensedDuplicate) {
+		const condensedCorrect = condensedDuplicate.prev();
+
+		condensed.updateText(condensedCorrect, condensed.getStoredTypes(condensedDuplicate));
+
+		condensedCorrect
+			.append(condensedDuplicate.find(".msg"))
+			.toggleClass("closed", condensedDuplicate.hasClass("closed"));
+
+		condensedDuplicate.remove();
+	}
+
 	// restore scroll position
 	const position = chan.height() - heightOld;
 	scrollable.finish().scrollTop(position);
@@ -83,7 +100,7 @@ chat.on("click", ".show-more-button", function() {
 	let lastMessageId = -1;
 
 	if (lastMessage.length > 0) {
-		lastMessageId = parseInt(lastMessage.attr("id").replace("msg-", ""), 10);
+		lastMessageId = parseInt(lastMessage.prop("id").replace("msg-", ""), 10);
 	}
 
 	self
@@ -92,6 +109,6 @@ chat.on("click", ".show-more-button", function() {
 
 	socket.emit("more", {
 		target: self.data("id"),
-		lastId: lastMessageId
+		lastId: lastMessageId,
 	});
 });

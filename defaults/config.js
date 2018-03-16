@@ -51,7 +51,7 @@ module.exports = {
 
 	//
 	// Set the default theme.
-	// Find out how to add new themes at https://thelounge.github.io/docs/packages/themes
+	// Find out how to add new themes at https://thelounge.github.io/docs/plugins/themes.html
 	//
 	// @type     string
 	// @default  "example"
@@ -76,7 +76,7 @@ module.exports = {
 	// which in result fixes mixed content warnings.
 	//
 	// If storage is enabled, The Lounge will fetch and store images and thumbnails
-	// in the `${LOUNGE_HOME}/storage` folder.
+	// in the `${THELOUNGE_HOME}/storage` folder.
 	//
 	// Images are deleted when they are no longer referenced by any message (controlled by maxHistory),
 	// and the folder is cleaned up on every The Lounge restart.
@@ -149,6 +149,19 @@ module.exports = {
 	webirc: null,
 
 	//
+	// Message logging
+	// Logging is also controlled per user individually (logs variable)
+	// Leave the array empty to disable all logging globally
+	//
+	// text: Text file per network/channel in user folder
+	// sqlite: Messages are stored in SQLite, this allows them to be reloaded on server restart
+	//
+	// @type     array
+	// @default  ["sqlite", "text"]
+	//
+	messageStorage: ["sqlite", "text"],
+
+	//
 	// Log settings
 	//
 	// Logging has to be enabled per user. If enabled, logs will be stored in
@@ -172,7 +185,7 @@ module.exports = {
 		// @type     string
 		// @default  "UTC+00:00"
 		//
-		timezone: "UTC+00:00"
+		timezone: "UTC+00:00",
 	},
 
 	//
@@ -234,20 +247,34 @@ module.exports = {
 		tls: true,
 
 		//
+		// Enable certificate verification
+		//
+		// If true, the server certificate is verified against
+		// the list of supplied CAs by your node.js installation.
+		//
+		// @type     boolean
+		// @default  true
+		//
+		rejectUnauthorized: true,
+
+		//
 		// Nick
 		//
-		// @type     string
-		// @default  "lounge-user"
+		// Percent sign (%) will be replaced into a random number from 0 to 9.
+		// For example, Guest%%% will become Guest123 on page load.
 		//
-		nick: "lounge-user",
+		// @type     string
+		// @default  "thelounge%%"
+		//
+		nick: "thelounge%%",
 
 		//
 		// Username
 		//
 		// @type     string
-		// @default  "lounge-user"
+		// @default  "thelounge"
 		//
-		username: "lounge-user",
+		username: "thelounge",
 
 		//
 		// Real Name
@@ -264,7 +291,7 @@ module.exports = {
 		// @type     string
 		// @default  "#thelounge"
 		//
-		join: "#thelounge"
+		join: "#thelounge",
 	},
 
 	//
@@ -316,16 +343,16 @@ module.exports = {
 		// @example  "sslcert/bundle.pem"
 		// @default  ""
 		//
-		ca: ""
+		ca: "",
 	},
 
 	//
 	// Default quit and part message if none is provided.
 	//
 	// @type     string
-	// @default  "The Lounge - https://thelounge.github.io"
+	// @default  "The Lounge - https://thelounge.chat"
 	//
-	leaveMessage: "The Lounge - https://thelounge.github.io",
+	leaveMessage: "The Lounge - https://thelounge.chat",
 
 	//
 	// Run The Lounge with identd support.
@@ -348,7 +375,7 @@ module.exports = {
 		// @type     int
 		// @default  113
 		//
-		port: 113
+		port: 113,
 	},
 
 	//
@@ -482,9 +509,9 @@ module.exports = {
 			// @type     string
 			// @default  "sub"
 			//
-			scope: "sub"
+			scope: "sub",
 
-		}
+		},
 	},
 
 	// Extra debugging

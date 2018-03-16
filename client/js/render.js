@@ -8,7 +8,9 @@ const utils = require("./utils");
 const sorting = require("./sorting");
 const constants = require("./constants");
 const condensed = require("./condensed");
+const JoinChannel = require("./join-channel");
 const helpers_parse = require("./libs/handlebars/parse");
+const Userlist = require("./userlist");
 
 const chat = $("#chat");
 const sidebar = $("#sidebar");
@@ -17,7 +19,7 @@ require("intersection-observer");
 
 const historyObserver = window.IntersectionObserver ?
 	new window.IntersectionObserver(loadMoreHistory, {
-		root: chat.get(0)
+		root: chat.get(0),
 	}) : null;
 
 module.exports = {
@@ -26,6 +28,7 @@ module.exports = {
 	renderChannel,
 	renderChannelUsers,
 	renderNetworks,
+	trimMessageInChannel,
 };
 
 function buildChannelMessages(container, chanId, chanType, messages) {
@@ -60,18 +63,21 @@ function appendMessage(container, chanId, chanType, msg) {
 		return;
 	}
 
+	const obj = {};
+	obj[msg.type] = 1;
+
 	// If the previous message is already condensed,
 	// we just append to it and update text
 	if (lastChild.hasClass("condensed")) {
 		lastChild.append(renderedMessage);
-		condensed.updateText(lastChild, [msg.type]);
+		condensed.updateText(lastChild, obj);
 		return;
 	}
 
 	// Always create a condensed container
 	const newCondensed = $(templates.msg_condensed({time: msg.time}));
 
-	condensed.updateText(newCondensed, [msg.type]);
+	condensed.updateText(newCondensed, obj);
 	newCondensed.append(renderedMessage);
 	container.append(newCondensed);
 }
@@ -88,8 +94,7 @@ function buildChatMessage(msg) {
 		msg.highlight = true;
 	}
 
-	if (constants.actionTypes.indexOf(type) !== -1) {
-		msg.template = "actions/" + type;
+	if (typeof templates.actions[type] !== "undefined") {
 		template = "msg_action";
 	} else if (type === "unhandled") {
 		template = "msg_unhandled";
@@ -113,7 +118,9 @@ function renderChannel(data) {
 	renderChannelMessages(data);
 
 	if (data.type === "channel") {
-		renderChannelUsers(data);
+		const users = renderChannelUsers(data);
+
+		Userlist.handleKeybinds(users.find(".search"));
 	}
 
 	if (historyObserver) {
@@ -150,15 +157,20 @@ function renderUnreadMarker(template, firstUnread, channel) {
 }
 
 function renderChannelUsers(data) {
-	const users = chat.find("#chan-" + data.id).find(".users");
+	const users = chat.find("#chan-" + data.id).find(".userlist");
 	const nicks = data.users
 		.concat() // Make a copy of the user list, sort is applied in-place
 		.sort((a, b) => b.lastMessage - a.lastMessage)
 		.map((a) => a.nick);
 
+	// Before re-rendering the list of names, there might have been an entry
+	// marked as active (i.e. that was highlighted by keyboard navigation).
+	// It is `undefined` if there was none.
+	const previouslyActive = users.find(".active");
+
 	const search = users
 		.find(".search")
-		.attr("placeholder", nicks.length + " " + (nicks.length === 1 ? "user" : "users"));
+		.prop("placeholder", nicks.length + " " + (nicks.length === 1 ? "user" : "users"));
 
 	users
 		.data("nicks", nicks)
@@ -169,15 +181,29 @@ function renderChannelUsers(data) {
 	if (search.val().length) {
 		search.trigger("input");
 	}
+
+	// If a nick was highlighted before re-rendering the lists, re-highlight it in
+	// the newly-rendered list.
+	if (previouslyActive.length > 0) {
+		// We need to un-highlight everything first because triggering `input` with
+		// a value highlights the first entry.
+		users.find(".user").removeClass("active");
+		users.find(`.user[data-name="${previouslyActive.data("name")}"]`).addClass("active");
+	}
+
+	return users;
 }
 
 function renderNetworks(data, singleNetwork) {
 	sidebar.find(".empty").hide();
 	sidebar.find(".networks").append(
 		templates.network({
-			networks: data.networks
+			networks: data.networks,
 		})
 	);
+
+	// Add keyboard handlers to the "Join a channel…" form inputs/button
+	JoinChannel.handleKeybinds();
 
 	let newChannels;
 	const channels = $.map(data.networks, function(n) {
@@ -196,7 +222,7 @@ function renderNetworks(data, singleNetwork) {
 						.data("needsNamesRefresh", true)
 						.find(".header .topic")
 						.html(helpers_parse(channel.topic))
-						.attr("title", channel.topic);
+						.prop("title", channel.topic);
 				}
 
 				if (channel.messages.length > 0) {
@@ -210,7 +236,7 @@ function renderNetworks(data, singleNetwork) {
 						container.find(".show-more").addClass("show");
 					}
 
-					container.trigger("keepToBottom");
+					container.parent().trigger("keepToBottom");
 				}
 			} else {
 				newChannels.push(channel);
@@ -220,19 +246,21 @@ function renderNetworks(data, singleNetwork) {
 		newChannels = channels;
 	}
 
-	chat.append(
-		templates.chat({
-			channels: channels
-		})
-	);
+	if (newChannels.length > 0) {
+		chat.append(
+			templates.chat({
+				channels: newChannels,
+			})
+		);
 
-	newChannels.forEach((channel) => {
-		renderChannel(channel);
+		newChannels.forEach((channel) => {
+			renderChannel(channel);
 
-		if (channel.type === "channel") {
-			chat.find("#chan-" + channel.id).data("needsNamesRefresh", true);
-		}
-	});
+			if (channel.type === "channel") {
+				chat.find("#chan-" + channel.id).data("needsNamesRefresh", true);
+			}
+		});
+	}
 
 	utils.confirmExit();
 	sorting();
@@ -242,18 +270,53 @@ function renderNetworks(data, singleNetwork) {
 	}
 }
 
+function trimMessageInChannel(channel, messageLimit) {
+	const messages = channel.find(".messages .msg").slice(0, -messageLimit);
+
+	if (messages.length === 0) {
+		return;
+	}
+
+	messages.remove();
+
+	channel.find(".show-more").addClass("show");
+
+	// Remove date-separators that would otherwise be "stuck" at the top of the channel
+	channel.find(".date-marker-container").each(function() {
+		if ($(this).next().hasClass("date-marker-container")) {
+			$(this).remove();
+		}
+	});
+}
+
 function loadMoreHistory(entries) {
 	entries.forEach((entry) => {
 		if (!entry.isIntersecting) {
 			return;
 		}
 
-		var target = $(entry.target).find(".show-more-button");
+		const target = $(entry.target).find(".show-more-button");
 
-		if (target.attr("disabled")) {
+		if (target.prop("disabled")) {
 			return;
 		}
 
-		target.click();
+		target.trigger("click");
 	});
 }
+
+sidebar.on("click", ".collapse-network", (e) => {
+	const collapseButton = $(e.target);
+
+	collapseButton.closest(".network").toggleClass("collapsed");
+
+	if (collapseButton.attr("aria-expanded") === "true") {
+		collapseButton.attr("aria-expanded", false);
+		collapseButton.attr("aria-label", "Expand");
+	} else {
+		collapseButton.attr("aria-expanded", true);
+		collapseButton.attr("aria-label", "Collapse");
+	}
+
+	return false;
+});

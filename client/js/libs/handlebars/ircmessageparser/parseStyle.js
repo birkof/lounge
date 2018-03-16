@@ -8,6 +8,8 @@ const RESET = "\x0f";
 const REVERSE = "\x16";
 const ITALIC = "\x1d";
 const UNDERLINE = "\x1f";
+const STRIKETHROUGH = "\x1e";
+const MONOSPACE = "\x11";
 
 // Color code matcher, with format `XX,YY` where both `XX` and `YY` are
 // integers, `XX` is the text color and `YY` is an optional background color.
@@ -17,12 +19,13 @@ const colorRx = /^(\d{1,2})(?:,(\d{1,2}))?/;
 const hexColorRx = /^([0-9a-f]{6})(?:,([0-9a-f]{6}))?/i;
 
 // Represents all other control codes that to be ignored/filtered from the text
-const controlCodesRx = /[\u0000-\u001F]/g;
+// This regex allows line feed character
+const controlCodesRx = /[\u0000-\u0009\u000B-\u001F]/g;
 
 // Converts a given text into an array of objects, each of them representing a
 // similarly styled section of the text. Each object carries the `text`, style
-// information (`bold`, `textColor`, `bgcolor`, `reverse`, `italic`,
-// `underline`), and `start`/`end` cursors.
+// information (`bold`, `textColor`, `bgcolor`, `italic`,
+// `underline`, `strikethrough`, `monospace`), and `start`/`end` cursors.
 function parseStyle(text) {
 	const result = [];
 	let start = 0;
@@ -30,7 +33,7 @@ function parseStyle(text) {
 
 	// At any given time, these carry style information since last time a styling
 	// control code was met.
-	let colorCodes, bold, textColor, bgColor, hexColor, hexBgColor, reverse, italic, underline;
+	let colorCodes, bold, textColor, bgColor, hexColor, hexBgColor, italic, underline, strikethrough, monospace;
 
 	const resetStyle = () => {
 		bold = false;
@@ -38,10 +41,12 @@ function parseStyle(text) {
 		bgColor = undefined;
 		hexColor = undefined;
 		hexBgColor = undefined;
-		reverse = false;
 		italic = false;
 		underline = false;
+		strikethrough = false;
+		monospace = false;
 	};
+
 	resetStyle();
 
 	// When called, this "closes" the current fragment by adding an entry to the
@@ -65,12 +70,13 @@ function parseStyle(text) {
 				bgColor,
 				hexColor,
 				hexBgColor,
-				reverse,
 				italic,
 				underline,
+				strikethrough,
+				monospace,
 				text: processedText,
 				start: fragmentStart,
-				end: fragmentStart + processedText.length
+				end: fragmentStart + processedText.length,
 			});
 		}
 
@@ -106,9 +112,11 @@ function parseStyle(text) {
 
 			if (colorCodes) {
 				textColor = Number(colorCodes[1]);
+
 				if (colorCodes[2]) {
 					bgColor = Number(colorCodes[2]);
 				}
+
 				// Color code length is > 1, so bump the current position cursor by as
 				// much (and reset the start cursor for the current text block as well)
 				position += colorCodes[0].length;
@@ -118,6 +126,7 @@ function parseStyle(text) {
 				textColor = undefined;
 				bgColor = undefined;
 			}
+
 			break;
 
 		case HEX_COLOR:
@@ -127,9 +136,11 @@ function parseStyle(text) {
 
 			if (colorCodes) {
 				hexColor = colorCodes[1].toUpperCase();
+
 				if (colorCodes[2]) {
 					hexBgColor = colorCodes[2].toUpperCase();
 				}
+
 				// Color code length is > 1, so bump the current position cursor by as
 				// much (and reset the start cursor for the current text block as well)
 				position += colorCodes[0].length;
@@ -142,10 +153,13 @@ function parseStyle(text) {
 
 			break;
 
-		case REVERSE:
+		case REVERSE: {
 			emitFragment();
-			reverse = !reverse;
+			const tmp = bgColor;
+			bgColor = textColor;
+			textColor = tmp;
 			break;
+		}
 
 		case ITALIC:
 			emitFragment();
@@ -155,6 +169,16 @@ function parseStyle(text) {
 		case UNDERLINE:
 			emitFragment();
 			underline = !underline;
+			break;
+
+		case STRIKETHROUGH:
+			emitFragment();
+			strikethrough = !strikethrough;
+			break;
+
+		case MONOSPACE:
+			emitFragment();
+			monospace = !monospace;
 			break;
 		}
 
@@ -168,7 +192,7 @@ function parseStyle(text) {
 	return result;
 }
 
-const properties = ["bold", "textColor", "bgColor", "hexColor", "hexBgColor", "italic", "underline", "reverse"];
+const properties = ["bold", "textColor", "bgColor", "hexColor", "hexBgColor", "italic", "underline", "strikethrough", "monospace"];
 
 function prepare(text) {
 	return parseStyle(text)
@@ -177,12 +201,14 @@ function prepare(text) {
 		.reduce((prev, curr) => {
 			if (prev.length) {
 				const lastEntry = prev[prev.length - 1];
+
 				if (properties.every((key) => curr[key] === lastEntry[key])) {
 					lastEntry.text += curr.text;
 					lastEntry.end += curr.text.length;
 					return prev;
 				}
 			}
+
 			return prev.concat([curr]);
 		}, []);
 }

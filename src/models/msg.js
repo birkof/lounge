@@ -1,18 +1,30 @@
 "use strict";
 
-var _ = require("lodash");
+const _ = require("lodash");
 
-var id = 0;
+let id = 0;
 
 class Msg {
 	constructor(attr) {
+		// Some properties need to be copied in the Msg object instead of referenced
+		if (attr) {
+			["from", "target"].forEach((prop) => {
+				if (attr[prop]) {
+					this[prop] = {
+						mode: attr[prop].mode,
+						nick: attr[prop].nick,
+					};
+				}
+			});
+		}
+
 		_.defaults(this, attr, {
-			from: "",
+			from: {},
 			id: id++,
 			previews: [],
 			text: "",
 			type: Msg.Type.MESSAGE,
-			self: false
+			self: false,
 		});
 
 		if (this.time > 0) {
@@ -24,6 +36,13 @@ class Msg {
 
 	findPreview(link) {
 		return this.previews.find((preview) => preview.link === link);
+	}
+
+	isLoggable() {
+		return this.type !== Msg.Type.MOTD &&
+			this.type !== Msg.Type.ERROR &&
+			this.type !== Msg.Type.BANLIST &&
+			this.type !== Msg.Type.WHOIS;
 	}
 }
 
@@ -44,10 +63,12 @@ Msg.Type = {
 	PART: "part",
 	QUIT: "quit",
 	CTCP: "ctcp",
+	CTCP_REQUEST: "ctcp_request",
+	CHGHOST: "chghost",
 	TOPIC: "topic",
 	TOPIC_SET_BY: "topic_set_by",
 	WHOIS: "whois",
-	BANLIST: "ban_list"
+	BANLIST: "ban_list",
 };
 
 module.exports = Msg;

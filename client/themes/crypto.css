@@ -2,7 +2,7 @@
 Crypto theme for The Lounge.
 
 Installation instructions can be found here
-https://thelounge.github.io/docs/server/configuration.html#theme
+https://thelounge.chat/docs/server/configuration.html#theme
 
 Author: Aynik
 GitHub: https://github.com/aynik
@@ -64,7 +64,7 @@ a:hover,
 	font-size: 12px;
 }
 
-#sidebar .chan:first-child {
+#sidebar .chan.lobby {
 	color: #00ff0e;
 }
 
@@ -91,7 +91,7 @@ a:hover,
 
 #windows .header .topic,
 .messages .msg,
-.sidebar {
+.userlist {
 	line-height: 1.8;
 }
 

@@ -8,7 +8,7 @@ const Helper = require("../helper");
 
 class WebPush {
 	constructor() {
-		const vapidPath = path.join(Helper.HOME, "vapid.json");
+		const vapidPath = path.join(Helper.getHomePath(), "vapid.json");
 
 		if (fs.existsSync(vapidPath)) {
 			const data = fs.readFileSync(vapidPath, "utf-8");
@@ -31,20 +31,20 @@ class WebPush {
 		}
 
 		WebPushAPI.setVapidDetails(
-			"https://github.com/thelounge/lounge",
+			"https://github.com/thelounge/thelounge",
 			this.vapidKeys.publicKey,
 			this.vapidKeys.privateKey
 		);
 	}
 
 	push(client, payload, onlyToOffline) {
-		_.forOwn(client.config.sessions, (session, token) => {
-			if (session.pushSubscription) {
-				if (onlyToOffline && _.find(client.attachedClients, {token: token}) !== undefined) {
+		_.forOwn(client.config.sessions, ({pushSubscription}, token) => {
+			if (pushSubscription) {
+				if (onlyToOffline && _.find(client.attachedClients, {token}) !== undefined) {
 					return;
 				}
 
-				this.pushSingle(client, session.pushSubscription, payload);
+				this.pushSingle(client, pushSubscription, payload);
 			}
 		});
 	}
@@ -56,8 +56,8 @@ class WebPush {
 				if (error.statusCode >= 400 && error.statusCode < 500) {
 					log.warn(`WebPush subscription for ${client.name} returned an error (${error.statusCode}), removing subscription`);
 
-					_.forOwn(client.config.sessions, (session, token) => {
-						if (session.pushSubscription && session.pushSubscription.endpoint === subscription.endpoint) {
+					_.forOwn(client.config.sessions, ({pushSubscription}, token) => {
+						if (pushSubscription && pushSubscription.endpoint === subscription.endpoint) {
 							client.unregisterPushSubscription(token);
 						}
 					});

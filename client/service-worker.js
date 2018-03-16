@@ -1,14 +1,20 @@
-// The Lounge - https://github.com/thelounge/lounge
+// The Lounge - https://github.com/thelounge/thelounge
 /* global clients */
 "use strict";
+
+self.addEventListener("message", function(event) {
+	showNotification(event, event.data);
+});
 
 self.addEventListener("push", function(event) {
 	if (!event.data) {
 		return;
 	}
 
-	const payload = event.data.json();
+	showNotification(event, event.data.json());
+});
 
+function showNotification(event, payload) {
 	if (payload.type !== "notification") {
 		return;
 	}
@@ -17,7 +23,7 @@ self.addEventListener("push", function(event) {
 	event.waitUntil(
 		self.registration
 			.getNotifications({
-				tag: `chan-${payload.chanId}`
+				tag: `chan-${payload.chanId}`,
 			})
 			.then((notifications) => {
 				for (const notification of notifications) {
@@ -33,23 +39,44 @@ self.addEventListener("push", function(event) {
 				});
 			})
 	);
-});
+}
 
 self.addEventListener("notificationclick", function(event) {
 	event.notification.close();
 
 	event.waitUntil(clients.matchAll({
-		type: "window"
-	}).then(function(clientList) {
-		for (var i = 0; i < clientList.length; i++) {
-			var client = clientList[i];
-			if ("focus" in client) {
-				return client.focus();
+		includeUncontrolled: true,
+		type: "window",
+	}).then((clientList) => {
+		if (clientList.length === 0) {
+			if (clients.openWindow) {
+				return clients.openWindow(`.#${event.notification.tag}`);
 			}
+
+			return;
 		}
 
-		if (clients.openWindow) {
-			return clients.openWindow(".");
+		const client = findSuitableClient(clientList);
+
+		client.postMessage({
+			type: "open",
+			channel: event.notification.tag,
+		});
+
+		if ("focus" in client) {
+			client.focus();
 		}
 	}));
 });
+
+function findSuitableClient(clientList) {
+	for (let i = 0; i < clientList.length; i++) {
+		const client = clientList[i];
+
+		if (client.focused || client.visibilityState === "visible") {
+			return client;
+		}
+	}
+
+	return clientList[0];
+}

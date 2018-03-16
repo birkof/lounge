@@ -5,15 +5,25 @@ const expect = require("chai").expect;
 const request = require("request");
 const io = require("socket.io-client");
 
-describe("Server", () => {
-	let server;
+describe("Server", function() {
+	// Travis is having issues with slow workers and thus tests timeout
+	this.timeout(process.env.CI ? 25000 : 5000);
 
-	before(() => {
+	let server;
+	let originalLogInfo;
+
+	before(function() {
+		originalLogInfo = log.info;
+
+		log.info = () => {};
+
 		server = require("../src/server")();
 	});
 
-	after((done) => {
+	after(function(done) {
 		server.close(done);
+
+		log.info = originalLogInfo;
 	});
 
 	const webURL = `http://${Helper.config.host}:${Helper.config.port}/`;
@@ -23,7 +33,7 @@ describe("Server", () => {
 			request(webURL, (error, response, body) => {
 				expect(error).to.be.null;
 				expect(body).to.include("<title>The Lounge</title>");
-				expect(body).to.include("https://thelounge.github.io/");
+				expect(body).to.include("js/bundle.js");
 
 				done();
 			});
@@ -41,7 +51,9 @@ describe("Server", () => {
 		});
 	});
 
-	describe("WebSockets", () => {
+	describe("WebSockets", function() {
+		this.slow(300);
+
 		let client;
 
 		before((done) => {
@@ -56,8 +68,8 @@ describe("Server", () => {
 				reconnection: false,
 				timeout: 1000,
 				transports: [
-					"websocket"
-				]
+					"websocket",
+				],
 			});
 
 			// Server emits events faster than the test can bind them

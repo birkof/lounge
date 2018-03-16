@@ -5,6 +5,7 @@ const escape = require("css.escape");
 const socket = require("../socket");
 const render = require("../render");
 const webpush = require("../webpush");
+const slideoutMenu = require("../slideout");
 const sidebar = $("#sidebar");
 const storage = require("../localStorage");
 const utils = require("../utils");
@@ -30,20 +31,27 @@ socket.on("init", function(data) {
 		render.renderNetworks(data);
 	}
 
-	if (lastMessageId > -1) {
-		$("#connection-error").removeClass("shown");
-		$(".show-more-button, #input").prop("disabled", false);
-		$("#submit").show();
-	} else {
+	$("#connection-error").removeClass("shown");
+	$(".show-more-button, #input").prop("disabled", false);
+	$("#submit").show();
+
+	if (lastMessageId < 0) {
 		if (data.token) {
 			storage.set("token", data.token);
 		}
 
 		webpush.configurePushNotifications(data.pushSubscription, data.applicationServerKey);
 
-		$("body").removeClass("signed-out");
+		$(document.body).removeClass("signed-out");
 		$("#loading").remove();
 		$("#sign-in").remove();
+
+		slideoutMenu.enable();
+
+		if (window.g_LoungeErrorHandler) {
+			window.removeEventListener("error", window.g_LoungeErrorHandler);
+			window.g_LoungeErrorHandler = null;
+		}
 	}
 
 	openCorrectChannel(previousActive, data.active);
@@ -54,17 +62,17 @@ function openCorrectChannel(clientActive, serverActive) {
 
 	// Open last active channel
 	if (clientActive > 0) {
-		target = sidebar.find("[data-id='" + clientActive + "']");
+		target = sidebar.find(`.chan[data-id="${clientActive}"]`);
 	}
 
 	// Open window provided in location.hash
 	if (target.length === 0 && window.location.hash) {
-		target = $("#footer, #sidebar").find("[data-target='" + escape(window.location.hash) + "']");
+		target = $(`[data-target="${escape(window.location.hash)}"]`).first();
 	}
 
 	// Open last active channel according to the server
 	if (serverActive > 0 && target.length === 0) {
-		target = sidebar.find("[data-id='" + serverActive + "']");
+		target = sidebar.find(`.chan[data-id="${serverActive}"]`);
 	}
 
 	// Open first available channel
@@ -75,7 +83,7 @@ function openCorrectChannel(clientActive, serverActive) {
 	// If target channel is found, open it
 	if (target.length > 0) {
 		target.trigger("click", {
-			replaceHistory: true
+			replaceHistory: true,
 		});
 
 		return;
@@ -83,6 +91,6 @@ function openCorrectChannel(clientActive, serverActive) {
 
 	// Open the connect window
 	$("#footer .connect").trigger("click", {
-		pushState: false
+		pushState: false,
 	});
 }

@@ -2,7 +2,7 @@
 
 const ldapAuth = require("../../../src/plugins/auth/ldap");
 const Helper = require("../../../src/helper");
-const ldap = require("ldapjs");
+const ldap = require("thelounge-ldapjs-non-maintained-fork");
 const expect = require("chai").expect;
 
 const user = "johndoe";
@@ -63,8 +63,8 @@ function startLdapServer(callback) {
 				cn: ["john doe"],
 				sn: ["johnny"],
 				uid: ["johndoe"],
-				memberof: [baseDN]
-			}
+				memberof: [baseDN],
+			},
 		};
 
 		if (req.filter.matches(obj.attributes)) {
@@ -109,15 +109,26 @@ function testLdapAuth() {
 }
 
 describe("LDAP authentication plugin", function() {
-	before((done) => {
-		this.server = startLdapServer(done);
+	this.slow(200);
+
+	let server;
+	let originalLogInfo;
+
+	before(function(done) {
+		originalLogInfo = log.info;
+
+		log.info = () => {};
+
+		server = startLdapServer(done);
 	});
 
-	after(() => {
-		this.server.close();
+	after(function() {
+		server.close();
+
+		log.info = originalLogInfo;
 	});
 
-	beforeEach(() => {
+	beforeEach(function() {
 		Helper.config.public = false;
 		Helper.config.ldap.enable = true;
 		Helper.config.ldap.url = "ldap://localhost:" + String(serverPort);

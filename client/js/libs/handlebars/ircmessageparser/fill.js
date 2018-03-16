@@ -13,9 +13,10 @@ function fill(existingEntries, text) {
 		if (textSegment.start > position) {
 			acc.push({
 				start: position,
-				end: textSegment.start
+				end: textSegment.start,
 			});
 		}
+
 		position = textSegment.end;
 		return acc;
 	}, []);
@@ -24,7 +25,7 @@ function fill(existingEntries, text) {
 	if (position < text.length) {
 		result.push({
 			start: position,
-			end: text.length
+			end: text.length,
 		});
 	}
 

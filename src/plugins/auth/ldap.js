@@ -1,14 +1,18 @@
 "use strict";
 
 const Helper = require("../../helper");
-const ldap = require("ldapjs");
+
+// Forked ldapjs for 2 reasons:
+// 1. Removed bunyan https://github.com/joyent/node-ldapjs/pull/399
+// 2. Remove dtrace-provider dependency
+const ldap = require("thelounge-ldapjs-non-maintained-fork");
 
 function ldapAuthCommon(user, bindDN, password, callback) {
 	const config = Helper.config;
 
 	const ldapclient = ldap.createClient({
 		url: config.ldap.url,
-		tlsOptions: config.ldap.tlsOptions
+		tlsOptions: config.ldap.tlsOptions,
 	});
 
 	ldapclient.on("error", function(err) {
@@ -23,7 +27,7 @@ function ldapAuthCommon(user, bindDN, password, callback) {
 }
 
 function simpleLdapAuth(user, password, callback) {
-	if (!user) {
+	if (!user || !password) {
 		return callback(false);
 	}
 
@@ -41,7 +45,7 @@ function simpleLdapAuth(user, password, callback) {
  * LDAP auth using initial DN search (see config comment for ldap.searchDN)
  */
 function advancedLdapAuth(user, password, callback) {
-	if (!user) {
+	if (!user || !password) {
 		return callback(false);
 	}
 
@@ -50,14 +54,14 @@ function advancedLdapAuth(user, password, callback) {
 
 	const ldapclient = ldap.createClient({
 		url: config.ldap.url,
-		tlsOptions: config.ldap.tlsOptions
+		tlsOptions: config.ldap.tlsOptions,
 	});
 
 	const base = config.ldap.searchDN.base;
 	const searchOptions = {
 		scope: config.ldap.searchDN.scope,
 		filter: `(&(${config.ldap.primaryKey}=${userDN})${config.ldap.searchDN.filter})`,
-		attributes: ["dn"]
+		attributes: ["dn"],
 	};
 
 	ldapclient.on("error", function(err) {
@@ -73,7 +77,7 @@ function advancedLdapAuth(user, password, callback) {
 		} else {
 			ldapclient.search(base, searchOptions, function(err2, res) {
 				if (err2) {
-					log.warning(`User not found: ${userDN}`);
+					log.warn(`User not found: ${userDN}`);
 					ldapclient.unbind();
 					callback(false);
 				} else {
@@ -92,6 +96,7 @@ function advancedLdapAuth(user, password, callback) {
 					});
 					res.on("end", function() {
 						ldapclient.unbind();
+
 						if (!found) {
 							callback(false);
 						}
@@ -109,17 +114,20 @@ function ldapAuth(manager, client, user, password, callback) {
 	// auth plugin API
 	function callbackWrapper(valid) {
 		if (valid && !client) {
-			manager.addUser(user, null);
+			manager.addUser(user, null, true);
 		}
+
 		callback(valid);
 	}
 
 	let auth;
+
 	if ("baseDN" in Helper.config.ldap) {
 		auth = simpleLdapAuth;
 	} else {
 		auth = advancedLdapAuth;
 	}
+
 	return auth(user, password, callbackWrapper);
 }
 
@@ -129,5 +137,5 @@ function isLdapEnabled() {
 
 module.exports = {
 	auth: ldapAuth,
-	isEnabled: isLdapEnabled
+	isEnabled: isLdapEnabled,
 };

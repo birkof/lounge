@@ -1,7 +1,7 @@
 "use strict";
 
 const Helper = require("../../helper");
-const colors = require("colors/safe");
+const colors = require("chalk");
 
 function localAuth(manager, client, user, password, callback) {
 	// If no user is found, or if the client has not provided a password,
@@ -37,6 +37,6 @@ function localAuth(manager, client, user, password, callback) {
 
 module.exports = {
 	auth: localAuth,
-	isEnabled: () => true
+	isEnabled: () => true,
 };
 

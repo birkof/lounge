@@ -1,7 +1,7 @@
 "use strict";
 
 const _ = require("lodash");
-const colors = require("colors/safe");
+const colors = require("chalk");
 const fs = require("fs");
 const path = require("path");
 const Client = require("./client");
@@ -20,11 +20,6 @@ ClientManager.prototype.init = function(identHandler, sockets) {
 	this.webPush = new WebPush();
 
 	if (!Helper.config.public && !Helper.config.ldap.enable) {
-		// TODO: Remove deprecated warning in v3.0.0
-		if ("autoload" in Helper.config) {
-			log.warn(`Autoloading users is now always enabled. Please remove the ${colors.yellow("autoload")} option from your configuration file.`);
-		}
-
 		this.autoloadUsers();
 	}
 };
@@ -35,7 +30,7 @@ ClientManager.prototype.findClient = function(name) {
 
 ClientManager.prototype.autoloadUsers = function() {
 	const users = this.getUsers();
-	const noUsersWarning = `There are currently no users. Create one with ${colors.bold("lounge add <name>")}.`;
+	const noUsersWarning = `There are currently no users. Create one with ${colors.bold("thelounge add <name>")}.`;
 
 	if (users.length === 0) {
 		log.info(noUsersWarning);
@@ -43,7 +38,7 @@ ClientManager.prototype.autoloadUsers = function() {
 
 	users.forEach((name) => this.loadUser(name));
 
-	fs.watch(Helper.USERS_PATH, _.debounce(() => {
+	fs.watch(Helper.getUsersPath(), _.debounce(() => {
 		const loaded = this.clients.map((c) => c.name);
 		const updatedUsers = this.getUsers();
 
@@ -51,12 +46,13 @@ ClientManager.prototype.autoloadUsers = function() {
 			log.info(noUsersWarning);
 		}
 
-		// New users created since last time users were loaded
-		_.difference(updatedUsers, loaded).forEach((name) => this.loadUser(name));
+		// Reload all users. Existing users will only have their passwords reloaded.
+		updatedUsers.forEach((name) => this.loadUser(name));
 
 		// Existing users removed since last time users were loaded
 		_.difference(loaded, updatedUsers).forEach((name) => {
-			const client = _.find(this.clients, {name: name});
+			const client = _.find(this.clients, {name});
+
 			if (client) {
 				client.quit(true);
 				this.clients = _.without(this.clients, client);
@@ -67,28 +63,37 @@ ClientManager.prototype.autoloadUsers = function() {
 };
 
 ClientManager.prototype.loadUser = function(name) {
-	const user = readUserConfig(name);
+	const userConfig = readUserConfig(name);
 
-	if (!user) {
+	if (!userConfig) {
 		return;
 	}
 
 	let client = this.findClient(name);
 
 	if (client) {
-		log.warn(`Tried to load user ${colors.bold(name)}, which is already loaded.`);
-		return client;
+		if (userConfig.password !== client.config.password) {
+			/**
+			 * If we happen to reload an existing client, make super duper sure we
+			 * have their latest password. We're not replacing the entire config
+			 * object, because that could have undesired consequences.
+			 *
+			 * @see https://github.com/thelounge/thelounge/issues/598
+			 */
+			client.config.password = userConfig.password;
+			log.info(`Password for user ${colors.bold(name)} was reset.`);
+		}
+	} else {
+		client = new Client(this, name, userConfig);
+		this.clients.push(client);
 	}
-
-	client = new Client(this, name, user);
-	this.clients.push(client);
 
 	return client;
 };
 
 ClientManager.prototype.getUsers = function() {
 	return fs
-		.readdirSync(Helper.USERS_PATH)
+		.readdirSync(Helper.getUsersPath())
 		.filter((file) => file.endsWith(".json"))
 		.map((file) => file.slice(0, -5));
 };
@@ -107,10 +112,11 @@ ClientManager.prototype.addUser = function(name, password, enableLog) {
 
 	const user = {
 		password: password || "",
-		log: enableLog || false,
+		log: enableLog,
 		awayMessage: "",
 		networks: [],
 		sessions: {},
+		clientSettings: {},
 	};
 
 	try {
@@ -127,8 +133,7 @@ ClientManager.prototype.updateUser = function(name, opts, callback) {
 	const user = readUserConfig(name);
 
 	if (!user) {
-		log.error(`Tried to update invalid user ${colors.green(name)}. This is most likely a bug.`);
-		return false;
+		return callback ? callback(true) : false;
 	}
 
 	const currentUser = JSON.stringify(user, null, "\t");
@@ -142,9 +147,13 @@ ClientManager.prototype.updateUser = function(name, opts, callback) {
 
 	try {
 		fs.writeFileSync(Helper.getUserConfigPath(name), newUser);
+		return callback ? callback() : true;
 	} catch (e) {
 		log.error(`Failed to update user ${colors.green(name)} (${e})`);
-		throw e;
+
+		if (callback) {
+			callback(e);
+		}
 	}
 };
 
@@ -169,6 +178,12 @@ function readUserConfig(name) {
 		return false;
 	}
 
-	const data = fs.readFileSync(userPath, "utf-8");
-	return JSON.parse(data);
+	try {
+		const data = fs.readFileSync(userPath, "utf-8");
+		return JSON.parse(data);
+	} catch (e) {
+		log.error(`Failed to read user ${colors.bold(name)}: ${e}`);
+	}
+
+	return false;
 }

@@ -18,3 +18,6 @@ require("./topic");
 require("./users");
 require("./sign_out");
 require("./sessions_list");
+require("./configuration");
+require("./changelog");
+require("./setting");

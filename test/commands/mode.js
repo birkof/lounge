@@ -1,29 +1,29 @@
 "use strict";
 
-var expect = require("chai").expect;
+const expect = require("chai").expect;
 
-var Chan = require("../../src/models/chan");
-var ModeCommand = require("../../src/plugins/inputs/mode");
+const Chan = require("../../src/models/chan");
+const ModeCommand = require("../../src/plugins/inputs/mode");
 
 describe("Commands", function() {
 	describe("/mode", function() {
 		const channel = new Chan({
-			name: "#thelounge"
+			name: "#thelounge",
 		});
 
 		const lobby = new Chan({
 			name: "Network Lobby",
-			type: Chan.Type.LOBBY
+			type: Chan.Type.LOBBY,
 		});
 
 		const testableNetwork = {
 			lastCommand: null,
 			nick: "xPaw",
 			irc: {
-				raw: function() {
-					testableNetwork.lastCommand = Array.prototype.join.call(arguments, " ");
-				}
-			}
+				raw(...args) {
+					testableNetwork.lastCommand = args.join(" ");
+				},
+			},
 		};
 
 		it("should not mess with the given target", function() {

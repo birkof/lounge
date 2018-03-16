@@ -1,16 +1,15 @@
 "use strict";
 
-var _ = require("lodash");
-var Msg = require("../../models/msg");
-var Chan = require("../../models/chan");
-var Helper = require("../../helper");
+const _ = require("lodash");
+const Msg = require("../../models/msg");
+const Chan = require("../../models/chan");
+const Helper = require("../../helper");
 
 module.exports = function(irc, network) {
-	var client = this;
+	const client = this;
 
 	network.channels[0].pushMessage(client, new Msg({
-		// text: "Network created, connecting to " + network.host + ":" + network.port + "...",
-		text: "Network created, connecting...",
+		text: "Network created, connecting to " + network.host + ":" + network.port + "...",
 	}), true);
 
 	irc.on("registered", function() {
@@ -28,10 +27,10 @@ module.exports = function(irc, network) {
 			irc.raw("AWAY", client.awayMessage);
 		}
 
-		var delay = 1000;
-		var commands = network.commands;
-		if (Array.isArray(commands)) {
-			commands.forEach((cmd) => {
+		let delay = 1000;
+
+		if (Array.isArray(network.commands)) {
+			network.commands.forEach((cmd) => {
 				setTimeout(function() {
 					client.input({
 						target: network.channels[0].id,
@@ -63,6 +62,8 @@ module.exports = function(irc, network) {
 		network.channels[0].pushMessage(client, new Msg({
 			text: "Connected to the network.",
 		}), true);
+
+		sendStatus();
 	});
 
 	irc.on("close", function() {
@@ -74,14 +75,33 @@ module.exports = function(irc, network) {
 	let identSocketId;
 
 	irc.on("raw socket connected", function(socket) {
-		identSocketId = client.manager.identHandler.addSocket(socket, client.name || network.username);
+		let ident = client.name || network.username;
+
+		if (Helper.config.useHexIp) {
+			ident = Helper.ip2hex(network.ip);
+		}
+
+		identSocketId = client.manager.identHandler.addSocket(socket, ident);
 	});
 
-	irc.on("socket close", function() {
+	irc.on("socket close", function(error) {
 		if (identSocketId > 0) {
 			client.manager.identHandler.removeSocket(identSocketId);
 			identSocketId = 0;
 		}
+
+		network.channels.forEach((chan) => {
+			chan.state = Chan.State.PARTED;
+		});
+
+		if (error) {
+			network.channels[0].pushMessage(client, new Msg({
+				type: Msg.Type.ERROR,
+				text: `Connection closed unexpectedly: ${error}`,
+			}), true);
+		}
+
+		sendStatus();
 	});
 
 	if (Helper.config.debug.ircFramework) {
@@ -139,4 +159,11 @@ module.exports = function(irc, network) {
 			serverOptions: network.serverOptions,
 		});
 	});
+
+	function sendStatus() {
+		const status = network.getNetworkStatus();
+		status.network = network.id;
+
+		client.emit("network:status", status);
+	}
 };

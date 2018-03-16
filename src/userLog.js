@@ -1,9 +1,9 @@
 "use strict";
 
-var fs = require("fs");
-var fsextra = require("fs-extra");
-var moment = require("moment");
-var Helper = require("./helper");
+const fs = require("fs");
+const fsextra = require("fs-extra");
+const moment = require("moment");
+const Helper = require("./helper");
 
 module.exports.write = function(user, network, chan, msg) {
 	const path = Helper.getUserLogsPath(user, network);
@@ -15,21 +15,22 @@ module.exports.write = function(user, network, chan, msg) {
 		return;
 	}
 
-	var format = Helper.config.logs.format || "YYYY-MM-DD HH:mm:ss";
-	var tz = Helper.config.logs.timezone || "UTC+00:00";
+	const format = Helper.config.logs.format || "YYYY-MM-DD HH:mm:ss";
+	const tz = Helper.config.logs.timezone || "UTC+00:00";
 
-	var time = moment(msg.time).utcOffset(tz).format(format);
-	var line = `[${time}] `;
+	const time = moment(msg.time).utcOffset(tz).format(format);
+	let line = `[${time}] `;
 
-	var type = msg.type.trim();
+	const type = msg.type.trim();
+
 	if (type === "message" || type === "highlight") {
 		// Format:
 		// [2014-01-01 00:00:00] <Arnold> Put that cookie down.. Now!!
-		line += `<${msg.from}> ${msg.text}`;
+		line += `<${msg.from.nick}> ${msg.text}`;
 	} else {
 		// Format:
 		// [2014-01-01 00:00:00] * Arnold quit
-		line += `* ${msg.from} `;
+		line += `* ${msg.from.nick} `;
 
 		if (msg.hostmask) {
 			line += `(${msg.hostmask}) `;

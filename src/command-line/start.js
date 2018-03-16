@@ -1,6 +1,6 @@
 "use strict";
 
-const colors = require("colors/safe");
+const colors = require("chalk");
 const fs = require("fs");
 const fsextra = require("fs-extra");
 const path = require("path");
@@ -10,46 +10,28 @@ const Utils = require("./utils");
 
 program
 	.command("start")
-	.option("-H, --host <ip>", "set the IP address or hostname for the web server to listen on")
-	.option("-P, --port <port>", "set the port to listen on")
-	.option("-B, --bind <ip>", "set the local IP to bind to for outgoing connections")
-	.option("    --public", "start in public mode")
-	.option("    --private", "start in private mode")
 	.description("Start the server")
 	.on("--help", Utils.extraHelp)
-	.action(function(options) {
+	.action(function() {
 		initalizeConfig();
 
 		const server = require("../server");
-
-		var mode = Helper.config.public;
-		if (options.public) {
-			mode = true;
-		} else if (options.private) {
-			mode = false;
-		}
-
-		Helper.config.host = options.host || Helper.config.host;
-		Helper.config.port = options.port || Helper.config.port;
-		Helper.config.bind = options.bind || Helper.config.bind;
-		Helper.config.public = mode;
-
 		server();
 	});
 
 function initalizeConfig() {
-	if (!fs.existsSync(Helper.CONFIG_PATH)) {
-		fsextra.ensureDirSync(Helper.HOME);
-		fs.chmodSync(Helper.HOME, "0700");
+	if (!fs.existsSync(Helper.getConfigPath())) {
+		fsextra.ensureDirSync(Helper.getHomePath());
+		fs.chmodSync(Helper.getHomePath(), "0700");
 		fsextra.copySync(path.resolve(path.join(
 			__dirname,
 			"..",
 			"..",
 			"defaults",
 			"config.js"
-		)), Helper.CONFIG_PATH);
-		log.info(`Configuration file created at ${colors.green(Helper.CONFIG_PATH)}.`);
+		)), Helper.getConfigPath());
+		log.info(`Configuration file created at ${colors.green(Helper.getConfigPath())}.`);
 	}
 
-	fsextra.ensureDirSync(Helper.USERS_PATH);
+	fsextra.ensureDirSync(Helper.getUsersPath());
 }

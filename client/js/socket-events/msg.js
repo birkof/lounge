@@ -6,20 +6,21 @@ const render = require("../render");
 const utils = require("../utils");
 const options = require("../options");
 const helpers_roundBadgeNumber = require("../libs/handlebars/roundBadgeNumber");
+const cleanIrcMessage = require("../libs/handlebars/ircmessageparser/cleanIrcMessage");
+const webpush = require("../webpush");
 const chat = $("#chat");
 const sidebar = $("#sidebar");
 
 let pop;
+
 try {
 	pop = new Audio();
 	pop.src = "audio/pop.ogg";
 } catch (e) {
 	pop = {
-		play: $.noop
+		play: $.noop,
 	};
 }
-
-$("#play").on("click", () => pop.play());
 
 socket.on("msg", function(data) {
 	// We set a maximum timeout of 2 seconds so that messages don't take too long to appear.
@@ -27,11 +28,28 @@ socket.on("msg", function(data) {
 });
 
 function processReceivedMessage(data) {
-	const targetId = data.chan;
-	const target = "#chan-" + targetId;
-	const channel = chat.find(target);
-	const container = channel.find(".messages");
+	let targetId = data.chan;
+	let target = "#chan-" + targetId;
+	let channel = chat.find(target);
+	let sidebarTarget = sidebar.find("[data-target='" + target + "']");
 
+	// Display received notices and errors in currently active channel.
+	// Reloading the page will put them back into the lobby window.
+	if (data.msg.showInActive) {
+		const activeOnNetwork = sidebarTarget.parent().find(".active");
+
+		// We only want to put errors/notices in active channel if they arrive on the same network
+		if (activeOnNetwork.length > 0) {
+			targetId = data.chan = activeOnNetwork.data("id");
+
+			target = "#chan-" + targetId;
+			channel = chat.find(target);
+			sidebarTarget = sidebar.find("[data-target='" + target + "']");
+		}
+	}
+
+	const scrollContainer = channel.find(".chat");
+	const container = channel.find(".messages");
 	const activeChannelId = chat.find(".chan.active").data("id");
 
 	if (data.msg.type === "channel_list" || data.msg.type === "ban_list") {
@@ -42,19 +60,35 @@ function processReceivedMessage(data) {
 	render.appendMessage(
 		container,
 		targetId,
-		channel.attr("data-type"),
+		channel.data("type"),
 		data.msg
 	);
 
-	container.trigger("keepToBottom");
+	if (activeChannelId === targetId) {
+		scrollContainer.trigger("keepToBottom");
+	}
 
 	notifyMessage(targetId, channel, data);
 
-	var lastVisible = container.find("div:visible").last();
-	if (data.msg.self
-		|| lastVisible.hasClass("unread-marker")
-		|| (lastVisible.hasClass("date-marker")
-		&& lastVisible.prev().hasClass("unread-marker"))) {
+	let shouldMoveMarker = data.msg.self;
+
+	if (!shouldMoveMarker) {
+		const lastChild = container.children().last();
+
+		// If last element is hidden (e.g. hidden status messages) check the element before it.
+		// If it's unread marker or date marker, then move unread marker to the bottom
+		// so that it isn't displayed as the last element in chat.
+		// display properly is checked instead of using `:hidden` selector because it doesn't work in non-active channels.
+		if (lastChild.css("display") === "none") {
+			const prevChild = lastChild.prev();
+
+			shouldMoveMarker =
+				prevChild.hasClass("unread-marker") ||
+				(prevChild.hasClass("date-marker") && prevChild.prev().hasClass("unread-marker"));
+		}
+	}
+
+	if (shouldMoveMarker) {
 		container
 			.find(".unread-marker")
 			.data("unread-id", 0)
@@ -63,29 +97,32 @@ function processReceivedMessage(data) {
 
 	// Clear unread/highlight counter if self-message
 	if (data.msg.self) {
-		sidebar.find("[data-target='" + target + "'] .badge").removeClass("highlight").empty();
+		sidebarTarget.find(".badge").removeClass("highlight").empty();
 	}
 
-	// Message arrived in a non active channel, trim it to 100 messages
-	if (activeChannelId !== targetId && container.find(".msg").slice(0, -100).remove().length) {
-		channel.find(".show-more").addClass("show");
+	let messageLimit = 0;
 
-		// Remove date-separators that would otherwise
-		// be "stuck" at the top of the channel
-		channel.find(".date-marker-container").each(function() {
-			if ($(this).next().hasClass("date-marker-container")) {
-				$(this).remove();
-			}
-		});
+	if (activeChannelId !== targetId) {
+		// If message arrives in non active channel, keep only 100 messages
+		messageLimit = 100;
+	} else if (scrollContainer.isScrollBottom()) {
+		// If message arrives in active channel, keep 500 messages if scroll is currently at the bottom
+		messageLimit = 500;
 	}
 
-	if ((data.msg.type === "message" || data.msg.type === "action" || data.msg.type === "notice") && channel.hasClass("channel")) {
-		const nicks = channel.find(".users").data("nicks");
+	if (messageLimit > 0) {
+		render.trimMessageInChannel(channel, messageLimit);
+	}
+
+	if ((data.msg.type === "message" || data.msg.type === "action") && channel.hasClass("channel")) {
+		const nicks = channel.find(".userlist").data("nicks");
+
 		if (nicks) {
-			const find = nicks.indexOf(data.msg.from);
+			const find = nicks.indexOf(data.msg.from.nick);
+
 			if (find !== -1) {
 				nicks.splice(find, 1);
-				nicks.unshift(data.msg.from);
+				nicks.unshift(data.msg.from.nick);
 			}
 		}
 	}
@@ -100,9 +137,10 @@ function notifyMessage(targetId, channel, msg) {
 	}
 
 	const button = sidebar.find(".chan[data-id='" + targetId + "']");
-	if (msg.highlight || (options.notifyAllMessages && msg.type === "message")) {
+
+	if (msg.highlight || (options.settings.notifyAllMessages && msg.type === "message")) {
 		if (!document.hasFocus() || !channel.hasClass("active")) {
-			if (options.notification) {
+			if (options.settings.notification) {
 				try {
 					pop.play();
 				} catch (exception) {
@@ -112,35 +150,54 @@ function notifyMessage(targetId, channel, msg) {
 
 			utils.toggleNotificationMarkers(true);
 
-			if (options.desktopNotifications && Notification.permission === "granted") {
+			if (options.settings.desktopNotifications && ("Notification" in window) && Notification.permission === "granted") {
 				let title;
 				let body;
 
 				if (msg.type === "invite") {
 					title = "New channel invite:";
-					body = msg.from + " invited you to " + msg.channel;
+					body = msg.from.nick + " invited you to " + msg.channel;
 				} else {
-					title = msg.from;
+					title = msg.from.nick;
+
 					if (!button.hasClass("query")) {
-						title += " (" + button.data("title").trim() + ")";
+						title += " (" + button.attr("aria-label").trim() + ")";
 					}
+
 					if (msg.type === "message") {
 						title += " says:";
 					}
-					body = msg.text.replace(/\x03(?:[0-9]{1,2}(?:,[0-9]{1,2})?)?|[\x00-\x1F]|\x7F/g, "").trim();
+
+					body = cleanIrcMessage(msg.text);
 				}
 
+				const timestamp = Date.parse(msg.time);
+
 				try {
-					const notify = new Notification(title, {
-						body: body,
-						icon: "img/logo-64.png",
-						tag: `lounge-${targetId}`
-					});
-					notify.addEventListener("click", function() {
-						window.focus();
-						button.click();
-						this.close();
-					});
+					if (webpush.hasServiceWorker) {
+						navigator.serviceWorker.ready.then((registration) => {
+							registration.active.postMessage({
+								type: "notification",
+								chanId: targetId,
+								timestamp: timestamp,
+								title: title,
+								body: body,
+							});
+						});
+					} else {
+						const notify = new Notification(title, {
+							tag: `chan-${targetId}`,
+							badge: "img/logo-64.png",
+							icon: "img/touch-icon-192x192.png",
+							body: body,
+							timestamp: timestamp,
+						});
+						notify.addEventListener("click", function() {
+							window.focus();
+							button.trigger("click");
+							this.close();
+						});
+					}
 				} catch (exception) {
 					// `new Notification(...)` is not supported and should be silenced.
 				}

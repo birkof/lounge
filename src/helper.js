@@ -1,27 +1,36 @@
 "use strict";
 
 const pkg = require("../package.json");
-var _ = require("lodash");
-var path = require("path");
-var os = require("os");
-var fs = require("fs");
-var net = require("net");
-var bcrypt = require("bcryptjs");
-const colors = require("colors/safe");
+const _ = require("lodash");
+const path = require("path");
+const os = require("os");
+const fs = require("fs");
+const net = require("net");
+const bcrypt = require("bcryptjs");
+const colors = require("chalk");
 
-var Helper = {
+let homePath;
+let configPath;
+let usersPath;
+let storagePath;
+let packagesPath;
+
+const Helper = {
 	config: null,
-	expandHome: expandHome,
-	getPackagesPath: getPackagesPath,
-	getPackageModulePath: getPackageModulePath,
-	getStoragePath: getStoragePath,
-	getUserConfigPath: getUserConfigPath,
-	getUserLogsPath: getUserLogsPath,
-	setHome: setHome,
-	getVersion: getVersion,
-	getGitCommit: getGitCommit,
-	ip2hex: ip2hex,
-	cleanIrcMessage: cleanIrcMessage,
+	expandHome,
+	getHomePath,
+	getPackagesPath,
+	getPackageModulePath,
+	getStoragePath,
+	getConfigPath,
+	getUsersPath,
+	getUserConfigPath,
+	getUserLogsPath,
+	setHome,
+	getVersion,
+	getGitCommit,
+	ip2hex,
+	mergeConfig,
 
 	password: {
 		hash: passwordHash,
@@ -45,10 +54,12 @@ function getVersion() {
 }
 
 let _gitCommit;
+
 function getGitCommit() {
 	if (_gitCommit !== undefined) {
 		return _gitCommit;
 	}
+
 	try {
 		_gitCommit = require("child_process")
 			.execSync("git rev-parse --short HEAD 2> /dev/null") // Returns hash of current commit
@@ -62,15 +73,24 @@ function getGitCommit() {
 	}
 }
 
-function setHome(homePath) {
-	this.HOME = expandHome(homePath);
-	this.CONFIG_PATH = path.join(this.HOME, "config.js");
-	this.USERS_PATH = path.join(this.HOME, "users");
+function setHome(newPath) {
+	homePath = expandHome(newPath);
+	configPath = path.join(homePath, "config.js");
+	usersPath = path.join(homePath, "users");
+	storagePath = path.join(homePath, "storage");
+	packagesPath = path.join(homePath, "packages");
 
 	// Reload config from new home location
-	if (fs.existsSync(this.CONFIG_PATH)) {
-		var userConfig = require(this.CONFIG_PATH);
-		this.config = _.merge(this.config, userConfig);
+	if (fs.existsSync(configPath)) {
+		const userConfig = require(configPath);
+
+		if (_.isEmpty(userConfig)) {
+			log.warn(`The file located at ${colors.green(configPath)} does not appear to expose anything.`);
+			log.warn(`Make sure it is non-empty and the configuration is exported using ${colors.bold("module.exports = { ... }")}.`);
+			log.warn("Using default configuration...");
+		}
+
+		mergeConfig(this.config, userConfig);
 	}
 
 	if (!this.config.displayNetwork && !this.config.lockNetwork) {
@@ -79,39 +99,41 @@ function setHome(homePath) {
 		log.warn(`${colors.bold("displayNetwork")} and ${colors.bold("lockNetwork")} are false, setting ${colors.bold("lockNetwork")} to true.`);
 	}
 
-	// TODO: Remove in future release
-	if (this.config.debug === true) {
-		log.warn("debug option is now an object, see defaults file for more information.");
-		this.config.debug = {ircFramework: true};
-	}
+	// Load theme color from manifest.json
+	const manifest = require("../public/manifest.json");
+	this.config.themeColor = manifest.theme_color;
+}
 
-	// TODO: Remove in future release
-	// Backwards compatibility for old way of specifying themes in settings
-	if (this.config.theme.includes(".css")) {
-		log.warn(`Referring to CSS files in the ${colors.green("theme")} setting of ${colors.green(Helper.CONFIG_PATH)} is ${colors.bold("deprecated")} and will be removed in a future version.`);
-	} else {
-		this.config.theme = `themes/${this.config.theme}.css`;
-	}
+function getHomePath() {
+	return homePath;
+}
+
+function getConfigPath() {
+	return configPath;
+}
+
+function getUsersPath() {
+	return usersPath;
 }
 
 function getUserConfigPath(name) {
-	return path.join(this.USERS_PATH, name + ".json");
+	return path.join(usersPath, name + ".json");
 }
 
 function getUserLogsPath(name, network) {
-	return path.join(this.HOME, "logs", name, network);
+	return path.join(homePath, "logs", name, network);
 }
 
 function getStoragePath() {
-	return path.join(this.HOME, "storage");
+	return storagePath;
 }
 
 function getPackagesPath() {
-	return path.join(this.HOME, "packages", "node_modules");
+	return packagesPath;
 }
 
 function getPackageModulePath(packageName) {
-	return path.join(Helper.getPackagesPath(), packageName);
+	return path.join(Helper.getPackagesPath(), "node_modules", packageName);
 }
 
 function ip2hex(address) {
@@ -121,7 +143,7 @@ function ip2hex(address) {
 	}
 
 	return address.split(".").map(function(octet) {
-		var hex = parseInt(octet, 10).toString(16);
+		let hex = parseInt(octet, 10).toString(16);
 
 		if (hex.length === 1) {
 			hex = "0" + hex;
@@ -131,6 +153,8 @@ function ip2hex(address) {
 	}).join("");
 }
 
+// Expand ~ into the current user home dir.
+// This does *not* support `~other_user/tmp` => `/home/other_user/tmp`.
 function expandHome(shortenedPath) {
 	if (!shortenedPath) {
 		return "";
@@ -138,11 +162,6 @@ function expandHome(shortenedPath) {
 
 	const home = os.homedir().replace("$", "$$$$");
 	return path.resolve(shortenedPath.replace(/^~($|\/|\\)/, home + "$1"));
-}
-
-function cleanIrcMessage(message) {
-	// TODO: This does not strip hex based colours
-	return message.replace(/\x02|\x1D|\x1F|\x16|\x0F|\x03(?:[0-9]{1,2}(?:,[0-9]{1,2})?)?/g, "");
 }
 
 function passwordRequiresUpdate(password) {
@@ -155,4 +174,20 @@ function passwordHash(password) {
 
 function passwordCompare(password, expected) {
 	return bcrypt.compare(password, expected);
+}
+
+function mergeConfig(oldConfig, newConfig) {
+	return _.mergeWith(oldConfig, newConfig, (objValue, srcValue, key) => {
+		// Do not override config variables if the type is incorrect (e.g. object changed into a string)
+		if (typeof objValue !== "undefined" && objValue !== null && typeof objValue !== typeof srcValue) {
+			log.warn(`Incorrect type for "${colors.bold(key)}", please verify your config.`);
+
+			return objValue;
+		}
+
+		// For arrays, simply override the value with user provided one.
+		if (_.isArray(objValue)) {
+			return srcValue;
+		}
+	});
 }

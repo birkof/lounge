@@ -3,7 +3,7 @@ Zenburn theme for The Lounge.
 Based on the Morning Theme by Riku Rouvila
 
 Installation instructions can be found here
-https://thelounge.github.io/docs/server/configuration.html#theme
+https://thelounge.chat/docs/server/configuration.html#theme
 
 Author: JP Smith
 GitHub: https://github.com/japesinator
@@ -23,8 +23,16 @@ body {
 	color: #dcdccc;
 }
 
+.logo {
+	display: none;
+}
+
+.logo-inverted {
+	display: inline-block;
+}
+
 #main,
-#chat .sidebar,
+#chat .userlist,
 #windows .chan,
 #windows .window {
 	background: #3f3f3f;
@@ -55,26 +63,30 @@ body {
 	border-top: 1px solid #000;
 }
 
-#chat .count {
+#chat .userlist .count {
 	background-color: #434443;
 }
 
-#chat .search {
+#chat .userlist .search {
 	color: #88b090;
 	padding: 15px 16px;
 }
 
 /* Borders */
-#chat .from,
+#chat .content,
 #windows .header,
 #chat .user-mode::before,
-#chat .sidebar {
+#chat .userlist {
 	border-color: #333;
 }
 
 /* User list */
 #chat .user-mode {
 	color: #dcdccc;
+}
+
+#chat .userlist .user.active {
+	background-color: #333;
 }
 
 /* Nicknames */
@@ -219,6 +231,12 @@ body {
 
 #chat table.channel-list td {
 	color: #ccc;
+}
+
+code,
+.irc-monospace {
+	background: #333;
+	color: #dcdccc;
 }
 
 /* Previews */

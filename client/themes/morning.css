@@ -3,7 +3,7 @@ Morning theme for The Lounge.
 Has a bit more eye-friendly color scheme.
 
 Installation instructions can be found here
-https://thelounge.github.io/docs/server/configuration.html#theme
+https://thelounge.chat/docs/server/configuration.html#theme
 
 Author: Riku Rouvila
 GitHub: https://github.com/rikukissa
@@ -22,33 +22,45 @@ body {
 	color: #ccc;
 }
 
+.logo {
+	display: none;
+}
+
+.logo-inverted {
+	display: inline-block;
+}
+
 #main,
-#chat .sidebar,
+#chat .userlist,
 #windows .chan,
 #windows .window {
 	background: #333c4a;
 }
 
-#chat .count {
+#chat .userlist .count {
 	background-color: #2e3642;
 }
 
-#chat .search {
+#chat .userlist .search {
 	color: #ccc;
 	padding: 15px 16px;
 }
 
 /* Borders */
-#chat .from,
+#chat .content,
 #windows .header,
 #chat .user-mode::before,
-#chat .sidebar {
+#chat .userlist {
 	border-color: #2a323d;
 }
 
 /* User list */
 #chat .user-mode {
 	color: #fefefe;
+}
+
+#chat .userlist .user.active {
+	background-color: #242a33;
 }
 
 /* Nicknames */
@@ -193,6 +205,12 @@ body {
 
 #chat table.channel-list td {
 	color: #ccc;
+}
+
+code,
+.irc-monospace {
+	background: #242a33;
+	color: #f3f3f3;
 }
 
 /* Embeds */

@@ -4,9 +4,19 @@ const $ = require("jquery");
 const storage = require("./localStorage");
 const socket = require("./socket");
 
-const pushNotificationsButton = $("#pushNotifications");
+let pushNotificationsButton;
 let clientSubscribed = null;
 let applicationServerKey;
+
+if ("serviceWorker" in navigator) {
+	navigator.serviceWorker.addEventListener("message", (event) => {
+		if (event.data && event.data.type === "open") {
+			$("#sidebar").find(`.chan[data-target="#${event.data.channel}"]`).trigger("click");
+		}
+	});
+}
+
+module.exports.hasServiceWorker = false;
 
 module.exports.configurePushNotifications = (subscribedOnServer, key) => {
 	applicationServerKey = key;
@@ -14,24 +24,32 @@ module.exports.configurePushNotifications = (subscribedOnServer, key) => {
 	// If client has push registration but the server knows nothing about it,
 	// this subscription is broken and client has to register again
 	if (clientSubscribed === true && subscribedOnServer === false) {
-		pushNotificationsButton.attr("disabled", true);
+		pushNotificationsButton.prop("disabled", true);
 
-		navigator.serviceWorker.register("service-worker.js")
+		navigator.serviceWorker.ready
 			.then((registration) => registration.pushManager.getSubscription())
 			.then((subscription) => subscription && subscription.unsubscribe())
 			.then((successful) => {
 				if (successful) {
-					alternatePushButton().removeAttr("disabled");
+					alternatePushButton().prop("disabled", false);
 				}
 			});
 	}
 };
 
-if (isAllowedServiceWorkersHost()) {
+module.exports.initialize = () => {
+	pushNotificationsButton = $("#pushNotifications");
+
+	if (!isAllowedServiceWorkersHost()) {
+		return;
+	}
+
 	$("#pushNotificationsHttps").hide();
 
 	if ("serviceWorker" in navigator) {
 		navigator.serviceWorker.register("service-worker.js").then((registration) => {
+			module.exports.hasServiceWorker = true;
+
 			if (!registration.pushManager) {
 				return;
 			}
@@ -40,7 +58,7 @@ if (isAllowedServiceWorkersHost()) {
 				$("#pushNotificationsUnsupported").hide();
 
 				pushNotificationsButton
-					.removeAttr("disabled")
+					.prop("disabled", false)
 					.on("click", onPushButton);
 
 				clientSubscribed = !!subscription;
@@ -53,12 +71,12 @@ if (isAllowedServiceWorkersHost()) {
 			$("#pushNotificationsUnsupported span").text(err);
 		});
 	}
-}
+};
 
 function onPushButton() {
-	pushNotificationsButton.attr("disabled", true);
+	pushNotificationsButton.prop("disabled", true);
 
-	navigator.serviceWorker.register("service-worker.js").then((registration) => {
+	navigator.serviceWorker.ready.then((registration) =>
 		registration.pushManager.getSubscription().then((existingSubscription) => {
 			if (existingSubscription) {
 				socket.emit("push:unregister");
@@ -68,31 +86,33 @@ function onPushButton() {
 
 			return registration.pushManager.subscribe({
 				applicationServerKey: urlBase64ToUint8Array(applicationServerKey),
-				userVisibleOnly: true
+				userVisibleOnly: true,
 			}).then((subscription) => {
 				const rawKey = subscription.getKey ? subscription.getKey("p256dh") : "";
-				const key = rawKey ? window.btoa(String.fromCharCode.apply(null, new Uint8Array(rawKey))) : "";
+				const key = rawKey ? window.btoa(String.fromCharCode(...new Uint8Array(rawKey))) : "";
 				const rawAuthSecret = subscription.getKey ? subscription.getKey("auth") : "";
-				const authSecret = rawAuthSecret ? window.btoa(String.fromCharCode.apply(null, new Uint8Array(rawAuthSecret))) : "";
+				const authSecret = rawAuthSecret ? window.btoa(String.fromCharCode(...new Uint8Array(rawAuthSecret))) : "";
 
 				socket.emit("push:register", {
 					token: storage.get("token"),
 					endpoint: subscription.endpoint,
 					keys: {
 						p256dh: key,
-						auth: authSecret
-					}
+						auth: authSecret,
+					},
 				});
 
 				return true;
 			});
 		}).then((successful) => {
 			if (successful) {
-				alternatePushButton().removeAttr("disabled");
+				alternatePushButton().prop("disabled", false);
 			}
-		});
-	}).catch((err) => {
-		$("#pushNotificationsUnsupported span").text(err).show();
+		})
+	).catch((err) => {
+		$("#pushNotificationsUnsupported")
+			.find("span").text(`An error has occured: ${err}`).end()
+			.show();
 	});
 
 	return false;

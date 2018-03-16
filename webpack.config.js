@@ -16,7 +16,7 @@ const config = {
 	output: {
 		path: path.resolve(__dirname, "public"),
 		filename: "[name]",
-		publicPath: "/"
+		publicPath: "/",
 	},
 	module: {
 		rules: [
@@ -31,12 +31,12 @@ const config = {
 						presets: [
 							["env", {
 								targets: {
-									browsers: "last 2 versions"
-								}
-							}]
-						]
-					}
-				}
+									browsers: "last 2 versions",
+								},
+							}],
+						],
+					},
+				},
 			},
 			{
 				test: /\.tpl$/,
@@ -47,15 +47,15 @@ const config = {
 					loader: "handlebars-loader",
 					options: {
 						helperDirs: [
-							path.resolve(__dirname, "client/js/libs/handlebars")
+							path.resolve(__dirname, "client/js/libs/handlebars"),
 						],
 						extensions: [
-							".tpl"
+							".tpl",
 						],
-					}
-				}
+					},
+				},
 			},
-		]
+		],
 	},
 	externals: {
 		json3: "JSON", // socket.io uses json3.js, but we do not target any browsers that need it
@@ -63,32 +63,37 @@ const config = {
 	plugins: [
 		new CopyPlugin([
 			{
-				from: "./node_modules/font-awesome/fonts/fontawesome-webfont.woff*",
-				to: "fonts/[name].[ext]"
+				from: "./node_modules/@fortawesome/fontawesome-free-webfonts/webfonts/fa-solid-900.woff*",
+				to: "fonts/[name].[ext]",
 			},
 			{
-				from: "./client/js/loading-slow-alert.js",
-				to: "js/[name].[ext]"
+				from: "./client/js/loading-error-handlers.js",
+				to: "js/[name].[ext]",
 			},
-			{ // TODO: Build index.html with handlebars
+			{
 				from: "./client/*",
-				to: "[name].[ext]"
+				to: "[name].[ext]",
+				ignore: "index.html.tpl",
 			},
 			{
 				from: "./client/audio/*",
-				to: "audio/[name].[ext]"
+				to: "audio/[name].[ext]",
 			},
 			{
 				from: "./client/img/*",
-				to: "img/[name].[ext]"
+				to: "img/[name].[ext]",
 			},
 			{
 				from: "./client/themes/*",
-				to: "themes/[name].[ext]"
+				to: "themes/[name].[ext]",
 			},
 			{ // TODO: Build css with postcss
 				from: "./client/css/*",
-				to: "css/[name].[ext]"
+				to: "css/[name].[ext]",
+			},
+			{
+				from: "./node_modules/primer-tooltips/build/build.css",
+				to: "css/primer-tooltips.[ext]",
 			},
 		]),
 		// socket.io uses debug, we don't need it
@@ -96,9 +101,9 @@ const config = {
 		// automatically split all vendor dependencies into a separate bundle
 		new webpack.optimize.CommonsChunkPlugin({
 			name: "js/bundle.vendor.js",
-			minChunks: (module) => module.context && module.context.indexOf("node_modules") !== -1
-		})
-	]
+			minChunks: (module) => module.context && module.context.includes("node_modules"),
+		}),
+	],
 };
 
 // *********************************
@@ -108,7 +113,7 @@ const config = {
 if (process.env.NODE_ENV === "production") {
 	config.plugins.push(new webpack.optimize.UglifyJsPlugin({
 		sourceMap: true,
-		comments: false
+		comments: false,
 	}));
 }
 

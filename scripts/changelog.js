@@ -28,10 +28,12 @@ it is very likely you will have to run all those each time:
 node scripts/changelog <version>
 ```
 
-`<version>` must *not* be prefixed with `v`. It is formatted either:
+`<version>` must be either:
 
-- `MAJOR.MINOR.PATCH` for a stable release, for example `2.5.0`
-- `MAJOR.MINOR.PATCH-(pre|rc).N` for a pre-release, for example `2.5.0-rc.1`
+- A keyword among: major, minor, patch, prerelease, pre
+- An explicit version of either format:
+  - `MAJOR.MINOR.PATCH` for a stable release, for example `2.5.0`
+  - `MAJOR.MINOR.PATCH-(pre|rc).N` for a pre-release, for example `2.5.0-rc.1`
 
 ## TODOs:
 
@@ -44,10 +46,11 @@ node scripts/changelog <version>
 "use strict";
 
 const _ = require("lodash");
-const colors = require("colors/safe");
+const colors = require("chalk");
 const fs = require("fs");
 const GraphQLClient = require("graphql-request").GraphQLClient;
 const moment = require("moment");
+const semver = require("semver");
 const util = require("util");
 const log = require("../src/log");
 const packageJson = require("../package.json");
@@ -68,11 +71,17 @@ if (process.argv[2] === undefined) {
 	process.exit(1);
 }
 
-const version = process.argv[2];
+// If version is not a valid X.Y.Z, it may be something like "pre".
+let version = semver.valid(process.argv[2]);
+
+if (!version) {
+	version = semver.inc(packageJson.version, process.argv[2]);
+}
 
 if (!/^[0-9]+\.[0-9]+\.[0-9]+(-(pre|rc)+\.[0-9]+)?$/.test(version)) {
-	log.error(`Argument ${colors.bold("version")} is incorrect.`);
-	log.error(`It must match format ${colors.green("x.y.z")} (stable) or ${colors.green("x.y.z-(pre|rc).n")} (pre-release).`);
+	log.error(`Argument ${colors.bold("version")} is incorrect It must be either:`);
+	log.error(`- A keyword among: ${colors.green("major")}, ${colors.green("minor")}, ${colors.green("patch")}, ${colors.green("prerelease")}, ${colors.green("pre")}`);
+	log.error(`- An explicit version of format ${colors.green("x.y.z")} (stable) or ${colors.green("x.y.z-(pre|rc).n")} (pre-release).`);
 	process.exit(1);
 }
 
@@ -84,7 +93,14 @@ function prereleaseTemplate(items) {
 
 [See the full changelog](${items.fullChangelogUrl})
 
-This is a release candidate for v${stableVersion(items.version)} to ensure maximum stability for public release.
+${prereleaseType(items.version) === "rc" ?
+		`This is a release candidate (RC) for v${stableVersion(items.version)} to ensure maximum stability for public release.
+Bugs may be fixed, but no further features will be added until the next stable version.` :
+
+		`This is a pre-release for v${stableVersion(items.version)} to offer latest changes without having to wait for a stable release.
+ At this stage, features may still be added or modified until the first release candidate for this version gets released.`
+}
+
 Please refer to the commit list given above for a complete list of changes, or wait for the stable release to get a thoroughly prepared change log entry.
 
 As with all pre-releases, this version requires explicit use of the \`next\` tag to be installed:
@@ -135,7 +151,7 @@ ${printList(items.documentation)}`
 }
 
 ${_.isEmpty(items.websiteDocumentation) ? "" :
-		`On the [website repository](https://github.com/thelounge/thelounge.github.io):
+		`On the [website repository](https://github.com/thelounge/thelounge.chat):
 
 ${printList(items.websiteDocumentation)}`
 }
@@ -150,15 +166,18 @@ ${printDependencyList(items.devDependencies)}`}
 @@@@@@@@@@@@@@@@@@@
 @@ UNCATEGORIZED @@
 @@@@@@@@@@@@@@@@@@@
-
-${printList(items.uncategorized)}
-`;
+${printUncategorizedList(items.uncategorized)}`;
 }
 
 // Returns true if the given version is a pre-release (i.e. 2.0.0-pre.3,
 // 2.5.0-rc.1, etc.), or false otherwise
 function isPrerelease(v) {
 	return v.includes("-");
+}
+
+// Given a version of `x.y.z-abc.n`, returns `abc`, i.e. the type of pre-release
+function prereleaseType(v) {
+	return semver.prerelease(v)[0];
 }
 
 // Returns the stable version that this pre-release version is targeting. For
@@ -169,7 +188,7 @@ function stableVersion(prereleaseVersion) {
 
 // Generates a compare-view URL between 2 versions of The Lounge
 function fullChangelogUrl(v1, v2) {
-	return `https://github.com/thelounge/lounge/compare/v${v1}...v${v2}`;
+	return `https://github.com/thelounge/thelounge/compare/v${v1}...v${v2}`;
 }
 
 // This class is a facade to fetching details about commits / PRs / tags / etc.
@@ -257,7 +276,7 @@ class RepositoryFetcher {
 			if (commits.map(({oid}) => oid).includes(stopCommit.oid)) {
 				return _.takeWhile(commits, ({oid}) => oid !== stopCommit.oid);
 			} else if (pageInfo.hasNextPage) {
-				return commits.concat(await fetchPaginatedCommits(stopCommit, pageInfo.endCursor));
+				return commits.concat(await fetchPaginatedCommits(pageInfo.endCursor));
 			}
 
 			return commits;
@@ -378,6 +397,7 @@ function pullRequestNumbersInCommits(commits) {
 		if (pullRequestId) {
 			array.push(pullRequestId);
 		}
+
 		return array;
 	}, []);
 }
@@ -420,6 +440,7 @@ function printLine(entry) {
 	if (entry.title) {
 		return printPullRequest(entry);
 	}
+
 	return printCommit(entry);
 }
 
@@ -444,6 +465,22 @@ function printDependencyList(dependencies) {
 	return _.map(dependencies, (pullRequests, name) =>
 		`  - \`${name}\` (${pullRequests.map(printPullRequestLink).join(", ")})`
 	).join("\n");
+}
+
+function printUncategorizedList(uncategorized) {
+	return Object.entries(uncategorized).reduce((memo, [label, items]) => {
+		if (items.length === 0) {
+			return memo;
+		}
+
+		memo += `
+@@@@@ ${label.toUpperCase()}
+
+${printList(items)}
+`;
+
+		return memo;
+	}, "");
 }
 
 const dependencies = Object.keys(packageJson.dependencies);
@@ -501,6 +538,14 @@ function isInternal(entry) {
 	return hasLabelOrAnnotatedComment(entry, "Meta: Internal");
 }
 
+function isBug({labels}) {
+	return hasLabel(labels, "Type: Bug");
+}
+
+function isFeature({labels}) {
+	return hasLabel(labels, "Type: Feature");
+}
+
 // Examples:
 //   Update webpack to the latest version
 //   Update `stylelint` to v1.2.3
@@ -526,6 +571,7 @@ function parse(entries) {
 					if (!result[dependencyType][packageName]) {
 						result[dependencyType][packageName] = [];
 					}
+
 					result[dependencyType][packageName].push(entry);
 				} else {
 					log.info(`${colors.bold(packageName)} was updated in ${colors.green("#" + entry.number)} then removed since last release. Skipping.`);
@@ -540,8 +586,15 @@ function parse(entries) {
 		} else if (isInternal(entry)) {
 			result.internals.push(entry);
 		} else {
-			result.uncategorized.push(entry);
+			if (isFeature(entry)) {
+				result.uncategorized.feature.push(entry);
+			} else if (isBug(entry)) {
+				result.uncategorized.bug.push(entry);
+			} else {
+				result.uncategorized.other.push(entry);
+			}
 		}
+
 		return result;
 	}, {
 		skipped: [],
@@ -551,7 +604,11 @@ function parse(entries) {
 		documentation: [],
 		internals: [],
 		security: [],
-		uncategorized: [],
+		uncategorized: {
+			feature: [],
+			bug: [],
+			other: [],
+		},
 		unknownDependencies: new Set(),
 	});
 }
@@ -563,6 +620,7 @@ function extractContributors(entries) {
 		if (pullRequest.author.login !== "greenkeeper") {
 			memo.add("@" + pullRequest.author.login);
 		}
+
 		return memo;
 	}, new Set());
 
@@ -584,7 +642,7 @@ async function generateChangelogEntry(targetVersion) {
 	let template;
 	let contributors = [];
 
-	const codeRepo = new RepositoryFetcher(client, "lounge");
+	const codeRepo = new RepositoryFetcher(client, "thelounge");
 	const previousVersion = await codeRepo.fetchPreviousVersion(targetVersion);
 
 	if (isPrerelease(targetVersion)) {
@@ -597,7 +655,7 @@ async function generateChangelogEntry(targetVersion) {
 		items.milestone = await codeRepo.fetchMilestone(targetVersion);
 		contributors = extractContributors(codeCommitsAndPullRequests);
 
-		const websiteRepo = new RepositoryFetcher(client, "thelounge.github.io");
+		const websiteRepo = new RepositoryFetcher(client, "thelounge.chat");
 		items.websiteDocumentation = await websiteRepo.fetchCommitsAndPullRequestsSince("v" + previousVersion);
 	}
 
@@ -646,6 +704,7 @@ async function addToChangelog(newEntry) {
 		} else {
 			log.error(error);
 		}
+
 		process.exit(1);
 	}
 
@@ -663,7 +722,7 @@ async function addToChangelog(newEntry) {
 	// Step 3 (optional): Print a list of skipped entries if there are any
 	if (skipped.length > 0) {
 		const pad = Math.max(...skipped.map((entry) => (entry.title || entry.messageHeadline).length));
-		log.warn(`${skipped.length} entries were skipped:`);
+		log.warn(`${skipped.length} ${skipped.length > 1 ? "entries were" : "entry was"} skipped:`);
 		skipped.forEach((entry) => {
 			log.warn(`- ${(entry.title || entry.messageHeadline).padEnd(pad)}  ${colors.gray(entry.url)}`);
 		});
@@ -671,6 +730,7 @@ async function addToChangelog(newEntry) {
 
 	// Step 4: Print out some information about what just happened to the console
 	const commitCommand = `git commit -m 'Add changelog entry for v${version}' CHANGELOG.md`;
+
 	if (isPrerelease(version)) {
 		log.info(`You can now run: ${colors.bold(commitCommand)}`);
 	} else {
