@@ -45,7 +45,8 @@
 		</div>
 		{{/if}}
 		<div class="col-sm-12">
-			<h2>User preferences</h2>
+			<h2 class="hide">User preferences</h2>
+            <br />
 		</div>
 		<div class="col-sm-3">
 			<label for="connect:nick">Nick</label>
