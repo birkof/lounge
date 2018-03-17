@@ -10,10 +10,6 @@
 		</small>
 	</h2>
 
-	<div class="about">
-		<div id="version-checker"></div>
-	</div>
-
 	<h2>Keyboard Shortcuts</h2>
 
 	<div class="help-item">
