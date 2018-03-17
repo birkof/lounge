@@ -25,5 +25,6 @@ socket.on("network:status", function(data) {
 	sidebar
 		.find("#network-" + data.network)
 		.toggleClass("not-connected", !data.connected)
-		.toggleClass("not-secure", !data.secure);
+		//.toggleClass("not-secure", !data.secure)
+	;
 });
